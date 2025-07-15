@@ -1,34 +1,49 @@
-; Interrupt handlers
+; Safe Interrupt handlers - v1.2.1
 
 [GLOBAL idt_flush]
-[GLOBAL keyboard_handler_wrapper]
-[EXTERN keyboard_handler_internal]
+[GLOBAL timer_interrupt_wrapper]
+[EXTERN exception_handler]
+[EXTERN timer_handler]
 
-; Load IDT
+; Load IDT - Simple and safe
 idt_flush:
     mov eax, [esp+4]  ; Get the pointer to the IDT
     lidt [eax]        ; Load the IDT
     ret
 
-; Keyboard interrupt handler wrapper
-keyboard_handler_wrapper:
+; Simple exception handler stub
+[GLOBAL exception_handler_asm]
+exception_handler_asm:
+    pusha               ; Save all registers
+    call exception_handler  ; Call C handler
+    popa                ; Restore all registers
+    iret                ; Return from interrupt
+
+; Timer interrupt wrapper (IRQ 0)
+timer_interrupt_wrapper:
     pusha               ; Save all registers
     push ds
     push es
     push fs
     push gs
     
-    mov ax, 0x10        ; Kernel data segment
+    ; Set up kernel data segment
+    mov ax, 0x10
     mov ds, ax
     mov es, ax
-    mov fs, ax
-    mov gs, ax
     
-    call keyboard_handler_internal  ; Call C handler
+    ; Call C timer handler
+    call timer_handler
     
+    ; Send EOI to PIC
+    mov al, 0x20
+    out 0x20, al
+    
+    ; Restore registers
     pop gs
     pop fs
     pop es
     pop ds
-    popa                ; Restore all registers
+    popa
+    
     iret                ; Return from interrupt

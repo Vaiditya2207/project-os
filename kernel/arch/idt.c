@@ -1,10 +1,11 @@
-/* Interrupt Descriptor Table (IDT) */
+/* Interrupt Descriptor Table (IDT) - Fixed Version */
 
 #include "../kernel.h"
 
 #define IDT_ENTRIES 256
 
-struct idt_entry {
+struct idt_entry
+{
     uint16_t base_low;
     uint16_t sel;
     uint8_t always0;
@@ -12,7 +13,8 @@ struct idt_entry {
     uint16_t base_high;
 } __attribute__((packed));
 
-struct idt_ptr {
+struct idt_ptr
+{
     uint16_t limit;
     uint32_t base;
 } __attribute__((packed));
@@ -23,7 +25,18 @@ static struct idt_ptr idt_p;
 // External assembly function to load IDT
 extern void idt_flush(uint32_t);
 
-void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags) {
+// Exception handlers
+extern void isr0(void);
+extern void isr1(void);
+extern void isr2(void);
+extern void isr3(void);
+extern void isr4(void);
+extern void isr5(void);
+extern void isr6(void);
+extern void isr7(void);
+
+void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags)
+{
     idt_entries[num].base_low = base & 0xFFFF;
     idt_entries[num].base_high = (base >> 16) & 0xFFFF;
     idt_entries[num].sel = sel;
@@ -31,33 +44,43 @@ void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags) {
     idt_entries[num].flags = flags;
 }
 
-void idt_init(void) {
+// Default exception handler
+void exception_handler(void)
+{
+    // For now, just hang - don't crash
+    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_RED);
+    vga_print("\nEXCEPTION OCCURRED - System Halted\n");
+    while (1)
+    {
+        asm volatile("hlt");
+    }
+}
+
+void idt_init(void)
+{
     idt_p.limit = (sizeof(struct idt_entry) * IDT_ENTRIES) - 1;
     idt_p.base = (uint32_t)&idt_entries;
-    
+
     // Clear IDT entries
-    memset(&idt_entries, 0, sizeof(struct idt_entry) * IDT_ENTRIES);
-    
-    // Remap PIC (Programmable Interrupt Controller)
-    // Master PIC
-    outb(0x20, 0x11);  // Initialize command
-    outb(0x21, 0x20);  // Offset (IRQ 0-7 -> interrupts 32-39)
-    outb(0x21, 0x04);  // Tell master PIC there's a slave at IRQ2
-    outb(0x21, 0x01);  // 8086 mode
-    
-    // Slave PIC
-    outb(0xA0, 0x11);  // Initialize command
-    outb(0xA1, 0x28);  // Offset (IRQ 8-15 -> interrupts 40-47)
-    outb(0xA1, 0x02);  // Tell slave PIC its cascade identity
-    outb(0xA1, 0x01);  // 8086 mode
-    
-    // Mask all interrupts except keyboard (IRQ1)
-    outb(0x21, 0xFD);  // Master PIC mask (11111101)
-    outb(0xA1, 0xFF);  // Slave PIC mask (11111111)
-    
+    for (int i = 0; i < IDT_ENTRIES; i++)
+    {
+        idt_entries[i].base_low = 0;
+        idt_entries[i].sel = 0;
+        idt_entries[i].always0 = 0;
+        idt_entries[i].flags = 0;
+        idt_entries[i].base_high = 0;
+    }
+
+    // Set up basic exception handlers first
+    idt_set_gate(0, (uint32_t)exception_handler, 0x08, 0x8E); // Division by zero
+    idt_set_gate(1, (uint32_t)exception_handler, 0x08, 0x8E); // Debug
+    idt_set_gate(2, (uint32_t)exception_handler, 0x08, 0x8E); // NMI
+    idt_set_gate(3, (uint32_t)exception_handler, 0x08, 0x8E); // Breakpoint
+    idt_set_gate(4, (uint32_t)exception_handler, 0x08, 0x8E); // Overflow
+    idt_set_gate(5, (uint32_t)exception_handler, 0x08, 0x8E); // Bound range
+    idt_set_gate(6, (uint32_t)exception_handler, 0x08, 0x8E); // Invalid opcode
+    idt_set_gate(7, (uint32_t)exception_handler, 0x08, 0x8E); // Device not available
+
     // Load IDT
     idt_flush((uint32_t)&idt_p);
-    
-    // Enable interrupts
-    asm volatile("sti");
 }
