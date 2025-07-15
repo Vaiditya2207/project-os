@@ -1,0 +1,19 @@
+# Build artifacts
+build/
+*.o
+*.bin
+*.iso
+
+# IDE files
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Backup files
+*~
+*.bak
+
+# QEMU files
+*.img
