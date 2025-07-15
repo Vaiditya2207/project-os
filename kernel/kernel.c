@@ -1,20 +1,16 @@
 /* SimpleOS Kernel Entry Point - Phase 1 */
 
 #include "kernel.h"
+#include "drivers/keyboard.h"
 
 // Forward declarations
 void show_welcome_screen(void);
 void interactive_shell(void);
 void process_command(char *command);
 void print_prompt(void);
-char* get_input(void);
 int string_compare(const char *str1, const char *str2);
 void string_copy(char *dest, const char *src);
 int string_length(const char *str);
-
-// Simple command buffer
-static char input_buffer[256];
-static int buffer_pos = 0;
 
 // Kernel main function
 void kernel_main(void) {
@@ -25,6 +21,7 @@ void kernel_main(void) {
     // Initialize subsystems quietly
     memory_init();
     idt_init();
+    keyboard_init(); // Initialize new keyboard system
     
     // Show welcome screen
     show_welcome_screen();
@@ -55,16 +52,10 @@ void interactive_shell(void) {
     
     while (1) {
         print_prompt();
-        char *command = get_input();
+        char *command = keyboard_get_input(); // Use new keyboard system
         
         if (string_length(command) > 0) {
             process_command(command);
-        }
-        
-        // Clear buffer
-        buffer_pos = 0;
-        for (int i = 0; i < 256; i++) {
-            input_buffer[i] = 0;
         }
     }
 }
@@ -74,21 +65,6 @@ void print_prompt(void) {
     vga_print("SimpleOS-v1.1");
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     vga_print("> ");
-}
-
-char* get_input(void) {
-    // Show cursor at the end of the prompt line
-    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    vga_putchar('_');
-    
-    // Wait indefinitely - no automatic cycling
-    while (1) {
-        // Infinite loop - waiting for real keyboard input
-        // In a real OS, this would wait for keyboard interrupt
-        for (volatile int i = 0; i < 50000000; i++);
-    }
-    
-    return input_buffer;
 }
 
 void process_command(char *command) {
