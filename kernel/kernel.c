@@ -36,49 +36,22 @@ void kernel_main(void) {
 void show_welcome_screen(void) {
     vga_clear();
     
-    // Title banner
+    // Simple title
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_print("=====================================\n");
-    vga_print("         Welcome to SimpleOS        \n");
-    vga_print("=====================================\n\n");
+    vga_print("========= SimpleOS =========\n\n");
     
-    // System information
+    // Just list command names
+    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    vga_print("Commands: help, about, status, memory, version, clear\n\n");
+    
+    // Brief instruction
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_print("SimpleOS v2.0 - Phase 1 Implementation\n");
-    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    vga_print("A custom operating system built from scratch\n\n");
-    
-    // System status
-    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
-    vga_print("System Status:\n");
-    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    vga_print("  [OK] VGA Text Driver\n");
-    vga_print("  [OK] Memory Management\n");
-    vga_print("  [OK] Interrupt Tables\n");
-    vga_print("  [OK] Interactive Shell\n\n");
-    
-    // Features
-    vga_set_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);
-    vga_print("Available Features:\n");
-    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    vga_print("  * Custom bootloader\n");
-    vga_print("  * Protected mode kernel\n");
-    vga_print("  * VGA text mode graphics\n");
-    vga_print("  * Basic command interface\n");
-    vga_print("  * Memory management\n\n");
-    
-    // Instructions
-    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_print("Welcome! Type 'help' for available commands.\n");
-    vga_print("This OS was built entirely from assembly and C.\n\n");
-    
-    // Delay to let user read
-    for (volatile int i = 0; i < 50000000; i++);
+    vga_print("Try any command!\n\n");
 }
 
 void interactive_shell(void) {
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    vga_print("Starting SimpleOS shell...\n\n");
+    vga_print("Starting interactive shell...\n\n");
     
     while (1) {
         print_prompt();
@@ -98,36 +71,23 @@ void interactive_shell(void) {
 
 void print_prompt(void) {
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_print("SimpleOS");
+    vga_print("SimpleOS-v1.1");
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    vga_print("$ ");
+    vga_print("> ");
 }
 
 char* get_input(void) {
-    // Simulate user input - in real implementation this would read from keyboard
-    // For now, we'll cycle through demo commands
-    static int demo_command = 0;
-    static char demo_commands[][20] = {
-        "help",
-        "about",
-        "status",
-        "memory",
-        "clear",
-        "version"
-    };
+    // Show cursor at the end of the prompt line
+    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    vga_putchar('_');
     
-    // Add delay to simulate typing
-    for (volatile int i = 0; i < 30000000; i++);
+    // Wait indefinitely - no automatic cycling
+    while (1) {
+        // Infinite loop - waiting for real keyboard input
+        // In a real OS, this would wait for keyboard interrupt
+        for (volatile int i = 0; i < 50000000; i++);
+    }
     
-    // Copy demo command to buffer
-    string_copy(input_buffer, demo_commands[demo_command]);
-    
-    // Print what user "typed"
-    vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
-    vga_print(input_buffer);
-    vga_print("\n");
-    
-    demo_command = (demo_command + 1) % 6;
     return input_buffer;
 }
 
@@ -174,9 +134,10 @@ void process_command(char *command) {
         vga_print("  Available RAM: 128MB (QEMU)\n");
         
     } else if (string_compare(command, "clear")) {
-        vga_clear();
         vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Screen cleared!\n");
+        vga_print("Clear command received.\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        vga_print("(Screen clearing disabled in demo mode)\n");
         
     } else if (string_compare(command, "version")) {
         vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
