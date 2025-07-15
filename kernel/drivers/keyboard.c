@@ -36,21 +36,12 @@ void keyboard_handler_internal(void) {
 }
 
 void keyboard_init(void) {
-    // Install keyboard interrupt handler (IRQ1 = interrupt 33)
-    idt_set_gate(33, (uint32_t)keyboard_handler_wrapper, 0x08, 0x8E);
-    
-    // Enable keyboard IRQ (IRQ1)
-    uint8_t mask = inb(0x21);
-    mask &= ~(1 << 1);  // Clear bit 1
-    outb(0x21, mask);
-    
+    // Disabled for v1.1 - will add back later
     keyboard_buffer = 0;
+    // Skip interrupt setup for now
 }
 
 char keyboard_getchar(void) {
-    char c = keyboard_buffer;
-    if (c) {
-        keyboard_buffer = 0;  // Clear buffer
-    }
-    return c;
+    // Disabled for v1.1 - return nothing for now
+    return 0;
 }
