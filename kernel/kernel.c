@@ -1,8 +1,23 @@
 /* SimpleOS Kernel Entry Point - Phase 1 */
 
+#include <stdint.h> // Add stdint.h include for uint16_t and uint8_t types
+
 #include "kernel.h"
 #include "drivers/keyboard.h"
-// #include "proc/process.h"  // Temporarily disabled
+#include "proc/process.h"  // Re-enabling for debugging
+
+// Simple serial output for debugging
+void serial_write_char(char c) {
+    // Write to COM1 (0x3F8)
+    while (!(inb(0x3F8 + 5) & 0x20));  // Wait for transmitter ready
+    outb(0x3F8, c);
+}
+
+void serial_write_string(const char *str) {
+    while (*str) {
+        serial_write_char(*str++);
+    }
+}
 
 // Forward declarations
 void show_welcome_screen(void);
@@ -20,6 +35,7 @@ void kernel_main(void)
     vga_init();
     vga_clear();
 
+    serial_write_string("SERIAL: Kernel started\n");
     vga_print("SimpleOS Kernel Starting...\n");
 
     // Initialize subsystems quietly
@@ -32,15 +48,21 @@ void kernel_main(void)
     vga_print("Initializing keyboard...\n");
     keyboard_init(); // Initialize new keyboard system
 
-    // TEMPORARILY DISABLE process management to test basic kernel
-    // vga_print("Initializing process management...\n");
-    // process_init();
-    // scheduler_init();
+    // Re-enable process management with minimal functionality
+    vga_print("Initializing process management...\n");
+    process_init();
+    vga_print("Initializing scheduler...\n");
+    scheduler_init();
 
     vga_print("Showing welcome screen...\n");
     // Show welcome screen
     show_welcome_screen();
 
+    vga_print("DEBUG: Welcome screen shown, starting shell...\n");
+    
+    // Small delay to let welcome screen render
+    for (volatile int i = 0; i < 1000000; i++);
+    
     // Start interactive shell
     interactive_shell();
 
@@ -53,7 +75,8 @@ void kernel_main(void)
 
 void show_welcome_screen(void)
 {
-    vga_clear();
+    serial_write_string("SERIAL: Starting welcome screen function\n");
+    vga_print("DEBUG: Starting welcome screen function\n");
 
     // Simple title
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
@@ -62,28 +85,75 @@ void show_welcome_screen(void)
     // Just list command names
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     vga_print("Commands: help, about, status, memory, version, clear\n");
-    // vga_print("Process:  ps, proc, spawn, stress\n\n");
+    vga_print("Process:  ps, proc, spawn, stress\n");
     vga_print("\n");
 
     // Brief instruction
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_print("Try any command!\n\n");
+    
+    vga_print("DEBUG: Welcome screen completed\n");
 }
 
 void interactive_shell(void)
 {
+    char input_buffer[256];
+    int buffer_index = 0;
+    
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     vga_print("Starting interactive shell...\n\n");
+    
+    // Clear keyboard buffer before starting
+    keyboard_clear_buffer();
+    
+    // Small delay to let things settle
+    for (volatile int i = 0; i < 500000; i++);
+
+    // Show first prompt
+    print_prompt();
 
     while (1)
     {
-        print_prompt();
-        char *command = keyboard_get_input(); // Use new keyboard system
-
-        if (string_length(command) > 0)
+        char c = keyboard_getchar();
+        
+        if (c != 0) // Valid character received
         {
-            process_command(command);
+            if (c == '\n') // Enter key pressed
+            {
+                vga_print("\n");
+                
+                if (buffer_index > 0)
+                {
+                    input_buffer[buffer_index] = '\0'; // Null terminate
+                    process_command(input_buffer);
+                    buffer_index = 0; // Reset buffer
+                }
+                
+                print_prompt();
+            }
+            else if (c == '\b') // Backspace
+            {
+                if (buffer_index > 0)
+                {
+                    buffer_index--;
+                    vga_print("\b \b"); // Move back, print space, move back again
+                }
+            }
+            else if (c >= 32 && c <= 126 && buffer_index < 255) // Printable characters
+            {
+                input_buffer[buffer_index] = c;
+                buffer_index++;
+                
+                // Echo the character
+                char temp_str[2];
+                temp_str[0] = c;
+                temp_str[1] = '\0';
+                vga_print(temp_str);
+            }
         }
+        
+        // Small delay to prevent excessive CPU usage
+        for (volatile int i = 0; i < 1000; i++);
     }
 }
 
@@ -110,11 +180,10 @@ void process_command(char *command)
         vga_print("  memory   - Memory information\n");
         vga_print("  clear    - Clear screen\n");
         vga_print("  version  - Show version info\n");
-        // Process commands temporarily disabled
-        // vga_print("  ps       - List all processes\n");
-        // vga_print("  proc     - Current process info\n");
-        // vga_print("  spawn    - Create demo processes\n");
-        // vga_print("  stress   - Stress test (5 processes)\n");
+        vga_print("  ps       - List all processes\n");
+        vga_print("  proc     - Current process info\n");
+        vga_print("  spawn    - Create demo processes\n");
+        vga_print("  stress   - Stress test (5 processes)\n");
     }
     else if (string_compare(command, "about"))
     {
@@ -149,23 +218,53 @@ void process_command(char *command)
     }
     else if (string_compare(command, "clear"))
     {
+        vga_clear();
         vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Clear command received.\n");
+        vga_print("Screen cleared.\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        vga_print("(Screen clearing disabled in demo mode)\n");
     }
     else if (string_compare(command, "version"))
     {
         vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
         vga_print("SimpleOS Version Information:\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        vga_print("  Kernel: v1.1.2 - Stable Basic Kernel\n");
+        vga_print("  Kernel: v1.2.0 - Process Management RESTORED\n");
         vga_print("  Bootloader: v1.0\n");
         vga_print("  Architecture: x86 (i386)\n");
         vga_print("  Build: Custom from scratch\n");
-
-        // Process management commands temporarily disabled
-        // Will be re-enabled once process management is fixed
+    }
+    else if (string_compare(command, "ps"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Process List:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        process_list_all();
+    }
+    else if (string_compare(command, "proc"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Current Process Information:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        process_t *current = scheduler_get_current();
+        if (current) {
+            process_print_info(current);
+        } else {
+            vga_print("No current process (kernel mode)\n");
+        }
+    }
+    else if (string_compare(command, "spawn"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        vga_print("Creating demo processes...\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        create_demo_processes();
+    }
+    else if (string_compare(command, "stress"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+        vga_print("Running stress test (5 processes)...\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        process_stress_test();
     }
     else
     {

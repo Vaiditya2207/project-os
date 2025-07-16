@@ -5,6 +5,7 @@
 
 // Keyboard configuration constants
 #define KEYBOARD_DATA_PORT 0x60
+#define KEYBOARD_STATUS_PORT 0x64
 #define ENTER_SCANCODE 0x1C
 #define BACKSPACE_SCANCODE 0x0E
 #define ENTER_COOLDOWN_CYCLES 5000

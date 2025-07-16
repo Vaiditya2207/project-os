@@ -14,37 +14,31 @@ process_t *kernel_process = NULL;
 static void process_idle_task(void);
 static void add_to_ready_queue(process_t *process);
 static void remove_from_ready_queue(process_t *process);
+process_t *process_create_test(const char *name, void *entry_point, process_priority_t priority);
 
 /**
  * Initialize the process management subsystem
  */
 void process_init(void)
 {
-    vga_print("  Clearing process table...\n");
-    // Clear process table
+    vga_print("  Initializing process table...\n");
+    
+    // Initialize process table
     for (int i = 0; i < MAX_PROCESSES; i++)
     {
         process_table[i] = NULL;
     }
-
-    vga_print("  Creating kernel idle process...\n");
-    // Create kernel idle process (PID 0)
-    kernel_process = process_create("kernel_idle", (void *)process_idle_task, PRIORITY_LOW);
-    if (kernel_process)
-    {
-        kernel_process->pid = 0; // Kernel always gets PID 0
-        process_table[0] = kernel_process;
-        current_process = kernel_process;
-        kernel_process->state = PROCESS_RUNNING;
-        vga_print("  Kernel idle process created successfully\n");
-    }
-    else
-    {
-        vga_print("  ERROR: Failed to create kernel idle process!\n");
-        // Don't halt, just continue without process management
-        current_process = NULL;
-        kernel_process = NULL;
-    }
+    
+    vga_print("  Process table initialized...\n");
+    
+    // Initialize global state
+    current_process = NULL;
+    kernel_process = NULL;
+    next_pid = 1;
+    ready_queue_head = NULL;
+    ready_queue_tail = NULL;
+    
+    vga_print("  Process management ready\n");
 }
 
 /**
@@ -52,81 +46,69 @@ void process_init(void)
  */
 process_t *process_create(const char *name, void *entry_point, process_priority_t priority)
 {
-    // Allocate memory for PCB
+    // Allocate process control block (PCB)
     process_t *process = (process_t *)kmalloc(sizeof(process_t));
-    if (!process)
-    {
+    if (!process) {
         return NULL;
     }
 
-    // Initialize basic process information
-    process->pid = process_allocate_pid();
-    process->parent_pid = current_process ? current_process->pid : 0;
-    process->state = PROCESS_READY;
-    process->priority = priority;
-    process->time_slice = DEFAULT_TIME_SLICE;
-    process->total_runtime = 0;
-    process->sleep_until = 0;
-
-    // Copy process name
-    int name_len = 0;
-    while (name[name_len] && name_len < 63)
-    {
-        process->name[name_len] = name[name_len];
-        name_len++;
+    // Initialize all memory to zero first (safer approach)
+    for (int i = 0; i < sizeof(process_t); i++) {
+        ((char*)process)[i] = 0;
     }
-    process->name[name_len] = '\0';
 
-    // Initialize CPU state for new process
-    memset(&process->cpu_state, 0, sizeof(cpu_state_t));
-    process->cpu_state.eip = (uint32_t)entry_point; // Set entry point
-    process->cpu_state.eflags = 0x202;              // Enable interrupts flag
-    process->cpu_state.cs = 0x08;                   // Kernel code segment
-    process->cpu_state.ds = process->cpu_state.es =
-        process->cpu_state.fs = process->cpu_state.gs =
-            process->cpu_state.ss = 0x10; // Kernel data segment
-
-    // Allocate stack
-    process->stack_size = STACK_SIZE;
-    process->stack_base = (uint32_t)kmalloc(STACK_SIZE);
-    if (!process->stack_base)
-    {
+    // Allocate unique PID
+    uint32_t pid = process_allocate_pid();
+    if (pid == 0) {
         kfree(process);
         return NULL;
     }
 
-    // Set stack pointer to top of stack (stack grows downward)
-    process->cpu_state.esp = process->stack_base + STACK_SIZE - 4;
-    process->cpu_state.ebp = process->cpu_state.esp;
+    // Allocate stack memory
+    void *stack = kmalloc(STACK_SIZE);
+    if (!stack) {
+        kfree(process);
+        return NULL;
+    }
 
-    // Initialize heap (not allocated yet)
+    // Initialize basic fields (avoid the problematic state field for now)
+    process->pid = pid;
+    process->parent_pid = 0;
+    process->priority = priority;
+    
+    // Initialize CPU state
+    process->cpu_state.eip = (uint32_t)entry_point;
+    process->cpu_state.esp = (uint32_t)stack + STACK_SIZE - 4;
+    process->cpu_state.eflags = 0x202;
+    
+    // Memory management
+    process->stack_base = (uint32_t)stack;
+    process->stack_size = STACK_SIZE;
     process->heap_base = 0;
     process->heap_size = 0;
-
-    // Initialize file descriptors
-    for (int i = 0; i < 16; i++)
-    {
-        process->file_descriptors[i] = NULL;
+    
+    // Scheduling information
+    process->time_slice = DEFAULT_TIME_SLICE;
+    process->total_runtime = 0;
+    process->sleep_until = 0;
+    
+    // Process relationships - already zeroed
+    
+    // Copy process name
+    int i;
+    for (i = 0; i < 63 && name[i] != '\0'; i++) {
+        process->name[i] = name[i];
     }
-
-    // Initialize process relationships
-    process->parent = current_process;
-    process->children = NULL;
-    process->next_child = NULL;
-    process->next = NULL;
-    process->prev = NULL;
+    process->name[i] = '\0';
 
     // Add to process table
-    if (process->pid < MAX_PROCESSES)
-    {
-        process_table[process->pid] = process;
-    }
+    process_table[pid] = process;
 
-    // Add to ready queue if not kernel process
-    if (process->pid != 0)
-    {
-        add_to_ready_queue(process);
-    }
+    // Set state last (this was the problematic field)
+    process->state = PROCESS_READY;
+    
+    // Add to ready queue
+    add_to_ready_queue(process);
 
     return process;
 }
@@ -424,4 +406,11 @@ void scheduler_init(void)
     ready_queue_head = NULL;
     ready_queue_tail = NULL;
     vga_print("  Scheduler ready\n");
+}
+
+// Simple test function with same signature
+process_t *process_create_test(const char *name, void *entry_point, process_priority_t priority)
+{
+    vga_print("TEST: Simple function called successfully\n");
+    return NULL; // Just return NULL for test
 }
