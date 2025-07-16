@@ -37,41 +37,42 @@ void *kmalloc(size_t size)
     }
 
     void *ptr = heap_current;
-    
+
     // Store size in header for potential future free() implementation
-    *((size_t*)ptr) = size;
-    
+    *((size_t *)ptr) = size;
+
     // Move pointer past header
-    void *user_ptr = (char*)ptr + sizeof(size_t);
+    void *user_ptr = (char *)ptr + sizeof(size_t);
     heap_current += total_size;
-    
+
     // Clear the allocated memory to prevent garbage data issues
     for (size_t i = 0; i < size; i++)
     {
-        ((char*)user_ptr)[i] = 0;
+        ((char *)user_ptr)[i] = 0;
     }
-    
+
     return user_ptr;
 }
 
 // Improved free function (still simple but safer)
 void kfree(void *ptr)
 {
-    if (!ptr) return;
-    
+    if (!ptr)
+        return;
+
     // For now, just mark as freed but don't actually reclaim
     // In a full implementation, we'd maintain a free list
     // This prevents crashes while allowing memory tracking
-    
+
     // Get back to the header
-    void *header_ptr = (char*)ptr - sizeof(size_t);
-    size_t size = *((size_t*)header_ptr);
-    
+    void *header_ptr = (char *)ptr - sizeof(size_t);
+    size_t size = *((size_t *)header_ptr);
+
     // Clear the memory to detect use-after-free bugs
     for (size_t i = 0; i < size; i++)
     {
-        ((char*)ptr)[i] = 0xDE; // Dead beef pattern
+        ((char *)ptr)[i] = 0xDE; // Dead beef pattern
     }
-    
+
     // TODO: Add to free list for reuse
 }

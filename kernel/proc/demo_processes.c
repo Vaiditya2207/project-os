@@ -10,13 +10,13 @@ void demo_counter_process(void)
     // Simple finite function that just returns
     // This simulates a process that does some work and exits
     volatile int counter = 0;
-    
+
     // Do a small amount of work then return
     for (volatile int i = 0; i < 1000; i++)
     {
         counter++;
     }
-    
+
     // Process completes - in a real OS this would trigger process exit
     // For now, just return safely
     return;
@@ -78,7 +78,7 @@ void process_stress_test(void)
 {
     vga_print("Creating stress test processes...\n");
 
-    for (int i = 0; i < 2; i++)  // Reduced from 5 to 2 for safety
+    for (int i = 0; i < 2; i++) // Reduced from 5 to 2 for safety
     {
         char name[32];
         // Simple name generation
@@ -92,24 +92,29 @@ void process_stress_test(void)
         vga_print("DEBUG: Creating process ");
         vga_print(name);
         vga_print("...\n");
-        
+
         process_t *proc = process_create(name, (void *)demo_counter_process, PRIORITY_NORMAL);
-        
-        if (proc) {
+
+        if (proc)
+        {
             vga_print("DEBUG: Successfully created process with PID ");
-            if (proc->pid < 10) {
+            if (proc->pid < 10)
+            {
                 vga_putchar('0' + proc->pid);
             }
             vga_print("\n");
-        } else {
+        }
+        else
+        {
             vga_print("DEBUG: Failed to create process ");
             vga_print(name);
             vga_print("\n");
             break; // Stop if we fail to create a process
         }
-        
+
         // Add a small delay between process creation
-        for (volatile int j = 0; j < 100000; j++);
+        for (volatile int j = 0; j < 100000; j++)
+            ;
     }
 
     vga_print("Stress test processes created!\n");
