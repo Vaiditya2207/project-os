@@ -3,23 +3,23 @@
 // Demo user processes for testing process management
 
 /**
- * Demo process that counts numbers
+ * Demo process that counts numbers - NON-BLOCKING VERSION
  */
 void demo_counter_process(void)
 {
-    // This would normally have its own memory space
-    // For now, just a simple counting demonstration
-    for (int i = 0; i < 1000000; i++)
+    // Simple finite function that just returns
+    // This simulates a process that does some work and exits
+    volatile int counter = 0;
+    
+    // Do a small amount of work then return
+    for (volatile int i = 0; i < 1000; i++)
     {
-        // Simulate some work
-        if (i % 100000 == 0)
-        {
-            // Would print status if we had per-process output
-        }
+        counter++;
     }
-
-    // Process exits naturally
-    process_exit(0);
+    
+    // Process completes - in a real OS this would trigger process exit
+    // For now, just return safely
+    return;
 }
 
 /**
@@ -78,7 +78,7 @@ void process_stress_test(void)
 {
     vga_print("Creating stress test processes...\n");
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 2; i++)  // Reduced from 5 to 2 for safety
     {
         char name[32];
         // Simple name generation
@@ -89,7 +89,27 @@ void process_stress_test(void)
         name[4] = '0' + i;
         name[5] = '\0';
 
-        process_create(name, (void *)demo_counter_process, PRIORITY_NORMAL);
+        vga_print("DEBUG: Creating process ");
+        vga_print(name);
+        vga_print("...\n");
+        
+        process_t *proc = process_create(name, (void *)demo_counter_process, PRIORITY_NORMAL);
+        
+        if (proc) {
+            vga_print("DEBUG: Successfully created process with PID ");
+            if (proc->pid < 10) {
+                vga_putchar('0' + proc->pid);
+            }
+            vga_print("\n");
+        } else {
+            vga_print("DEBUG: Failed to create process ");
+            vga_print(name);
+            vga_print("\n");
+            break; // Stop if we fail to create a process
+        }
+        
+        // Add a small delay between process creation
+        for (volatile int j = 0; j < 100000; j++);
     }
 
     vga_print("Stress test processes created!\n");

@@ -103,6 +103,9 @@ process_t *process_find_by_pid(uint32_t pid);
 uint32_t process_allocate_pid(void);
 void process_print_info(process_t *process);
 void process_list_all(void);
+process_t *process_find_by_pid(uint32_t pid);
+int process_kill_by_pid(uint32_t pid);
+int process_set_status(uint32_t pid, process_state_t status);
 
 // Kernel process (idle task)
 extern process_t *kernel_process;
@@ -110,7 +113,6 @@ extern process_t *current_process;
 
 // Demo processes for testing
 void create_demo_processes(void);
-void process_stress_test(void);
 void demo_counter_process(void);
 void demo_calc_process(void);
 void demo_monitor_process(void);
