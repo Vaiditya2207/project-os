@@ -24,7 +24,15 @@ This document outlines the development progress and future plans for SimpleOS.
 - `create <name>` - Dynamic process creation
 - `kill <pid>` - Process termination
 
-## Phase 1: Enhanced Kernel Foundation (Next 2-3 months)
+## Current Development Branch: v1.2.5-memory-management
+
+🎯 **Current Sprint Goals:**
+- [ ] **Paging System**: Virtual memory with page tables
+- [ ] **Physical Memory Manager**: Frame allocation/deallocation
+- [ ] **Memory Protection**: User/kernel space separation
+- [ ] **Advanced Heap**: Free list optimization and fragmentation handling
+
+## Phase 1: Enhanced Kernel Foundation (Current Focus)
 
 ### 1.1 Memory Management Improvements
 - [x] **Basic Heap Allocator**: kmalloc/kfree implementation ✅
