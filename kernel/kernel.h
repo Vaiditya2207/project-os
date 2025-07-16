@@ -10,6 +10,7 @@ void vga_init(void);
 void vga_clear(void);
 void vga_print(const char *str);
 void vga_print_hex(uint32_t value);
+void vga_print_decimal(uint32_t value);
 void vga_putchar(char c);
 void vga_set_color(uint8_t foreground, uint8_t background);
 
@@ -17,6 +18,16 @@ void vga_set_color(uint8_t foreground, uint8_t background);
 void memory_init(void);
 void *kmalloc(size_t size);
 void kfree(void *ptr);
+
+// Physical Memory Manager
+void pmm_init(void);
+uint32_t pmm_alloc_frame(void);
+void pmm_free_frame(uint32_t frame_addr);
+uint32_t pmm_alloc_frames(uint32_t count);
+void pmm_free_frames(uint32_t start_addr, uint32_t count);
+void pmm_print_stats(void);
+uint32_t pmm_get_free_memory(void);
+int pmm_test_allocation(void);
 
 // Interrupt Handling
 void idt_init(void);

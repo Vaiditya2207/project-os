@@ -51,6 +51,9 @@ void kernel_main(void)
     vga_print("Initializing memory...\n");
     memory_init();
 
+    vga_print("Initializing physical memory manager...\n");
+    pmm_init();
+
     vga_print("Initializing IDT...\n");
     idt_init();
 
@@ -149,6 +152,8 @@ void process_command(char *command)
         vga_print("  about    - About SimpleOS\n");
         vga_print("  status   - System status\n");
         vga_print("  memory   - Memory information\n");
+        vga_print("  memstat  - Physical memory statistics\n");
+        vga_print("  memtest  - Test physical memory allocation\n");
         vga_print("  clear    - Clear screen\n");
         vga_print("  version  - Show version info\n");
         vga_print("  keytest  - Test enhanced keyboard features\n");
@@ -227,6 +232,20 @@ void process_command(char *command)
             vga_putchar('0' + (total_kb % 10));
         }
         vga_print("KB\n");
+    }
+    else if (string_compare(command, "memstat"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Physical Memory Statistics:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        pmm_print_stats();
+    }
+    else if (string_compare(command, "memtest"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Running Physical Memory Tests:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        pmm_test_allocation();
     }
     else if (string_compare(command, "clear"))
     {
