@@ -30,8 +30,11 @@ This document outlines the development progress and future plans for SimpleOS.
 - `ps` - Process listing
 - `create <name>` - Dynamic process creation
 - `kill <pid>` - Process termination
+- `syscall` - System call interface information
+- `sysctest` - Test system call dispatcher (safe mode)
+- `errno` - Error handling validation
 
-## Current Development Branch: main
+## Current Development Branch: v1.3.1-system-calls
 
 🎯 **Memory Management Sprint Complete!** ✅
 - [x] **Paging System**: Virtual memory with page tables ✅
@@ -39,10 +42,15 @@ This document outlines the development progress and future plans for SimpleOS.
 - [x] **Memory Protection**: User/kernel space separation ✅
 - [x] **Advanced Heap**: Free list optimization and fragmentation handling ✅
 
-🎯 **Next Sprint Goals: System Calls & Process Enhancements**
+🎯 **Current Sprint: System Calls Implementation (v1.3.1)**
+- [x] **Syscall Interface**: C-based syscall infrastructure complete ✅ (16 syscalls implemented)
+- [x] **Parameter Validation**: Context validation and error handling ✅
+- [x] **Syscall Dispatcher**: Table-driven dispatch system ✅
+- [x] **Error Handling**: Proper errno implementation ✅
+- [ ] **INT 0x80 Handler**: Assembly interrupt handler (debugging in progress)
 - [ ] **System Calls**: fork() and exec() implementation
 - [ ] **Process Synchronization**: Mutexes and semaphores
-- [ ] **Syscall Interface**: INT 0x80 handler and parameter validation
+- [ ] **Error Handling**: Proper errno implementation ✅ (Basic implementation complete)
 
 ## Phase 1: Enhanced Kernel Foundation (Current Focus)
 

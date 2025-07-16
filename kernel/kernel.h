@@ -98,4 +98,7 @@ void process_init(void);
 void scheduler_init(void);
 void schedule(void);
 
+// System Calls
+void syscall_init(void);
+
 #endif // KERNEL_H
