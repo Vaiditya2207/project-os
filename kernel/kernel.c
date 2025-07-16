@@ -187,6 +187,11 @@ void process_command(char *command)
         vga_print("  syscall         - Show system call interface info\n");
         vga_print("  sysctest        - Test system call dispatcher (SAFE MODE - stable)\n");
         vga_print("  int80test       - Test INT 0x80 interrupt handler (experimental)\n");
+        vga_print("  int80min        - Test minimal INT 0x80 handler (just iret)\n");
+        vga_print("  int80debug      - Test debug INT 0x80 handler (basic registers)\n");
+        vga_print("  int80full       - Test full INT 0x80 handler (complete save)\n");
+        vga_print("  inttest         - Test basic interrupt mechanism (INT 3)\n");
+        vga_print("  idtcheck        - Check IDT setup without calling interrupts\n");
         vga_print("  errno           - Show errno value and test error handling\n");
     }
     else if (string_compare(command, "about"))
@@ -813,44 +818,81 @@ void process_command(char *command)
     else if (string_compare(command, "int80test"))
     {
         vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
-        vga_print("Testing INT 0x80 Interrupt Handler (EXPERIMENTAL)...\n");
+        vga_print("Systematic INT 0x80 Handler Debugging...\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         
-        vga_print("⚠️  WARNING: This test may crash the kernel!\n");
-        vga_print("🔧 Attempting to enable and test INT 0x80 handler...\n");
+        vga_print("🔧 Testing handler levels systematically:\n\n");
         
-        // Temporarily enable the INT 0x80 handler for testing
-        extern void syscall_interrupt_handler_debug(void);
-        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_debug, 0x08, 0xEE);
+        // Level 1: Minimal handler (just iret)
+        vga_print("Level 1: Testing minimal handler (just iret)...\n");
+        extern void syscall_interrupt_handler_minimal(void);
+        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_minimal, 0x10, 0x8E);
         
-        vga_print("✅ INT 0x80 handler registered in IDT\n");
-        vga_print("🧪 Attempting INT 0x80 call...\n");
-        
-        // Test the interrupt
-        uint32_t test_result;
+        uint32_t test_result = 0x12345678; // Set a test value
         asm volatile (
-            "mov $4, %%eax\n\t"      // SYS_GETPID
-            "mov $0, %%ebx\n\t"      
-            "mov $0, %%ecx\n\t"
-            "mov $0, %%edx\n\t"
-            "mov $0, %%esi\n\t"
-            "mov $0, %%edi\n\t"
-            "int $0x80\n\t"          // The moment of truth
+            "mov $4, %%eax\n\t"      // SYS_GETPID  
+            "int $0x80\n\t"          // Should return original EAX
             : "=a" (test_result)     
             :                        
-            : "ebx", "ecx", "edx", "esi", "edi", "memory"
+            : "memory"
         );
         
-        // If we get here, it worked!
-        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-        vga_print("🎉 INT 0x80 SUCCESS! Result: ");
+        vga_print("   Minimal handler result: ");
         vga_print_hex(test_result);
-        vga_print("\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        if (test_result == 4) {
+            vga_print(" ✅ SUCCESS - Handler called and returned!\n");
+            
+            // Level 2: Debug handler (push/pop EAX)
+            vga_print("\nLevel 2: Testing debug handler (basic register handling)...\n");
+            extern void syscall_interrupt_handler_debug(void);
+            idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_debug, 0x10, 0x8E);
+            
+            asm volatile (
+                "mov $4, %%eax\n\t"      // SYS_GETPID  
+                "int $0x80\n\t"          // Should return PID 1
+                : "=a" (test_result)     
+                :                        
+                : "memory"
+            );
+            
+            vga_print("   Debug handler result: ");
+            vga_print_hex(test_result);
+            if (test_result == 1) {
+                vga_print(" ✅ SUCCESS - Register modification works!\n");
+                
+                // Level 3: Full handler (pushad/popad)
+                vga_print("\nLevel 3: Testing full handler (complete register save)...\n");
+                extern void syscall_interrupt_handler_simple(void);
+                idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_simple, 0x10, 0x8E);
+                
+                asm volatile (
+                    "mov $4, %%eax\n\t"      // SYS_GETPID  
+                    "int $0x80\n\t"          // Should return original EAX
+                    : "=a" (test_result)     
+                    :                        
+                    : "memory"
+                );
+                
+                vga_print("   Full handler result: ");
+                vga_print_hex(test_result);
+                if (test_result == 4) {
+                    vga_print(" ✅ SUCCESS - Full register handling works!\n");
+                    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+                    vga_print("\n🎉 ALL HANDLER LEVELS WORKING! INT 0x80 is functional!\n");
+                    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+                } else {
+                    vga_print(" ❌ FAILED - Full handler issue\n");
+                }
+            } else {
+                vga_print(" ❌ FAILED - Debug handler issue\n");
+            }
+        } else {
+            vga_print(" ❌ FAILED - Minimal handler crashed or malfunctioned\n");
+        }
         
-        // Disable it again to keep safe mode stable
+        // Clean up
         idt_set_gate(0x80, 0, 0, 0);  // Clear the handler
-        vga_print("🔒 INT 0x80 handler disabled for stability\n");
+        vga_print("\n🔒 INT 0x80 handler disabled for stability\n");
     }
     else if (string_compare(command, "errno"))
     {
@@ -878,6 +920,195 @@ void process_command(char *command)
         vga_print(", errno: ");
         vga_print_decimal(syscall_get_errno());
         vga_print("\n");
+    }
+    else if (string_compare(command, "inttest"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Testing Basic Interrupt Mechanism\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        // Check current interrupt state
+        uint32_t eflags;
+        asm volatile ("pushf; pop %0" : "=r" (eflags));
+        vga_print("EFLAGS: ");
+        vga_print_hex(eflags);
+        if (eflags & 0x200) {
+            vga_print(" (IF=1 - interrupts enabled)\n");
+            vga_print("This is dangerous! Disabling interrupts...\n");
+            asm volatile ("cli");
+        } else {
+            vga_print(" (IF=0 - interrupts disabled)\n");
+        }
+        
+        vga_print("Attempting INT 3 (breakpoint)...\n");
+        
+        // Try a simple software interrupt
+        asm volatile (
+            "int $3\n\t"
+            :
+            :
+            : "memory"
+        );
+        
+        vga_print("INT 3 completed without crash!\n");
+    }
+    else if (string_compare(command, "idtcheck"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);
+        vga_print("Checking IDT Setup (no interrupts called)\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        // Check EFLAGS
+        uint32_t eflags;
+        asm volatile ("pushf; pop %0" : "=r" (eflags));
+        vga_print("EFLAGS: ");
+        vga_print_hex(eflags);
+        vga_print(eflags & 0x200 ? " (IF=1)\n" : " (IF=0)\n");
+        
+        // Get IDT register
+        struct {
+            uint16_t limit;
+            uint32_t base;
+        } __attribute__((packed)) idt_reg;
+        
+        asm volatile ("sidt %0" : "=m" (idt_reg));
+        vga_print("IDT Base: ");
+        vga_print_hex(idt_reg.base);
+        vga_print(", Limit: ");
+        vga_print_hex(idt_reg.limit);
+        vga_print("\n");
+        
+        // Check if IDT base looks reasonable
+        if (idt_reg.base >= 0x100000 && idt_reg.base < 0x200000) {
+            vga_print("IDT base address looks reasonable\n");
+        } else {
+            vga_print("WARNING: IDT base address looks suspicious!\n");
+        }
+        
+        // Check CS register
+        uint16_t cs;
+        asm volatile ("mov %%cs, %0" : "=r" (cs));
+        vga_print("Code Segment (CS): ");
+        vga_print_hex(cs);
+        if (cs == 0x08) {
+            vga_print(" (correct kernel code segment)\n");
+        } else {
+            vga_print(" (unexpected value!)\n");
+        }
+        
+        // Check DS register  
+        uint16_t ds;
+        asm volatile ("mov %%ds, %0" : "=r" (ds));
+        vga_print("Data Segment (DS): ");
+        vga_print_hex(ds);
+        if (ds == 0x10) {
+            vga_print(" (correct kernel data segment)\n");
+        } else {
+            vga_print(" (unexpected value!)\n");
+        }
+        
+        vga_print("IDT check completed - no interrupts called\n");
+    }
+    else if (string_compare(command, "int80min"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+        vga_print("Testing INT 0x80 - MINIMAL Handler (just iret)\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        // First, check if interrupts are enabled
+        uint32_t eflags;
+        asm volatile ("pushf; pop %0" : "=r" (eflags));
+        vga_print("Current EFLAGS: ");
+        vga_print_hex(eflags);
+        if (eflags & 0x200) {
+            vga_print(" (interrupts ENABLED - dangerous!)\n");
+            vga_print("Disabling interrupts for safety...\n");
+            asm volatile ("cli");
+        } else {
+            vga_print(" (interrupts disabled - good!)\n");
+        }
+        
+        extern void syscall_interrupt_handler_minimal(void);
+        vga_print("Installing minimal handler at address: ");
+        vga_print_hex((uint32_t)syscall_interrupt_handler_minimal);
+        vga_print("\n");
+        
+        // Use the correct code segment (0x10 instead of 0x08)
+        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_minimal, 0x10, 0x8E);
+        vga_print("Handler installed. Attempting INT 0x80...\n");
+        
+        uint32_t test_result = 0x12345678;
+        asm volatile (
+            "mov $4, %%eax\n\t"      // SYS_GETPID  
+            "int $0x80\n\t"          
+            : "=a" (test_result)     
+            :                        
+            : "memory"
+        );
+        
+        vga_print("RETURNED! Result: ");
+        vga_print_hex(test_result);
+        vga_print(" (should be 4 if working)\n");
+        
+        // Clean up
+        idt_set_gate(0x80, 0, 0, 0);
+        vga_print("Handler cleared.\n");
+    }
+    else if (string_compare(command, "int80debug"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+        vga_print("Testing INT 0x80 - DEBUG Handler (basic register handling)\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        extern void syscall_interrupt_handler_debug(void);
+        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_debug, 0x10, 0x8E);
+        
+        vga_print("Handler installed. Calling INT 0x80...\n");
+        
+        uint32_t test_result = 0x12345678;
+        asm volatile (
+            "mov $4, %%eax\n\t"      // SYS_GETPID  
+            "int $0x80\n\t"          
+            : "=a" (test_result)     
+            :                        
+            : "memory"
+        );
+        
+        vga_print("Result: ");
+        vga_print_hex(test_result);
+        vga_print(" (should be 1 if working)\n");
+        
+        // Clean up
+        idt_set_gate(0x80, 0, 0, 0);
+        vga_print("Handler cleared.\n");
+    }
+    else if (string_compare(command, "int80full"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        vga_print("Testing INT 0x80 - FULL Handler (complete register save)\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        extern void syscall_interrupt_handler_simple(void);
+        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_simple, 0x10, 0x8E);
+        
+        vga_print("Handler installed. Calling INT 0x80...\n");
+        
+        uint32_t test_result = 0x12345678;
+        asm volatile (
+            "mov $4, %%eax\n\t"      // SYS_GETPID  
+            "int $0x80\n\t"          
+            : "=a" (test_result)     
+            :                        
+            : "memory"
+        );
+        
+        vga_print("Result: ");
+        vga_print_hex(test_result);
+        vga_print(" (expected behavior varies by handler)\n");
+        
+        // Clean up
+        idt_set_gate(0x80, 0, 0, 0);
+        vga_print("Handler cleared.\n");
     }
     else
     {

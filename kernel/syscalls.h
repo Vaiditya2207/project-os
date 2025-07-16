@@ -70,6 +70,7 @@ void syscall_register(uint32_t syscall_num, syscall_handler_t handler);
 extern void syscall_interrupt_handler(void);
 extern void syscall_interrupt_handler_simple(void);
 extern void syscall_interrupt_handler_debug(void);
+extern void syscall_interrupt_handler_minimal(void);
 
 // Legacy interface (for compatibility)
 uint32_t syscall_handler(uint32_t syscall_num, uint32_t arg1, uint32_t arg2, uint32_t arg3);
