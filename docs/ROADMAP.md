@@ -21,9 +21,9 @@ This document outlines the path from our basic kernel to a complete operating sy
 - [ ] **Memory Protection**: User/kernel space separation
 
 ### 1.2 Process Management
-- [ ] **Process Control Blocks**: Store process state
+- [x] **Process Control Blocks**: Store process state
 - [ ] **Context Switching**: Save/restore CPU registers and stack
-- [ ] **Basic Scheduler**: Round-robin or priority-based
+- [ ] **Basic Scheduler**: Round-robin or priority-based (framework exists but disabled)
 - [ ] **Process Creation**: fork() and exec() system calls
 
 ### 1.3 File System
@@ -156,27 +156,3 @@ This document outlines the path from our basic kernel to a complete operating sy
 - **Linux**: 1991-1994 (basic kernel to distribution)
 - **FreeBSD**: 1993-1995 (BSD fork to release)
 - **BeOS**: 1991-1998 (concept to commercial)
-
-## Career Impact
-
-### Skills Demonstrated
-- **Systems Programming**: Low-level expertise
-- **Architecture Design**: Large-scale system design
-- **Project Management**: Multi-year project execution
-- **Problem Solving**: Complex debugging and optimization
-
-### Industry Recognition
-- **Speaking Opportunities**: Conferences and meetups
-- **Open Source Leadership**: Community building
-- **Technical Writing**: Documentation and tutorials
-- **Mentorship**: Teaching others OS development
-
-## Getting Started
-
-1. **Master the Basics**: Complete Phase 1 thoroughly
-2. **Join Community**: OSDev forums and Discord
-3. **Document Progress**: Blog about your journey
-4. **Iterate Quickly**: Release early and often
-5. **Stay Motivated**: Remember this is a marathon, not a sprint
-
-Your SimpleOS kernel is the foundation for an incredible journey that could span years and become a significant contribution to the open source community!

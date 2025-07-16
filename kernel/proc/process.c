@@ -1,7 +1,7 @@
 #include "process.h"
 
 // Global process management state
-static process_t *process_table[MAX_PROCESSES];
+process_t *process_table[MAX_PROCESSES];
 static uint32_t next_pid = 1;
 static process_t *ready_queue_head = NULL;
 static process_t *ready_queue_tail = NULL;
@@ -12,8 +12,6 @@ process_t *kernel_process = NULL;
 
 // Forward declarations
 static void process_idle_task(void);
-static void add_to_ready_queue(process_t *process);
-static void remove_from_ready_queue(process_t *process);
 process_t *process_create_test(const char *name, void *entry_point, process_priority_t priority);
 
 /**
@@ -244,9 +242,26 @@ process_t *process_find_by_pid(uint32_t pid)
  */
 int process_kill_by_pid(uint32_t pid)
 {
+    // Additional protection for PID 1 (always kernel) - check first
+    if (pid == 1) {
+        vga_print("ERROR: PID 1 is protected - cannot kill kernel process!\n");
+        return PROCESS_PROTECTED;
+    }
+    
     process_t *process = process_find_by_pid(pid);
     if (!process)
-        return 0; // Process not found
+        return PROCESS_NOT_FOUND; // Process not found
+
+    // Protect critical system processes
+    if (process == kernel_process) {
+        vga_print("ERROR: Cannot kill kernel_idle process - system critical!\n");
+        return PROCESS_PROTECTED; // Cannot kill kernel process
+    }
+    
+    if (process == current_process && current_process == kernel_process) {
+        vga_print("ERROR: Cannot kill the running kernel process!\n");
+        return PROCESS_PROTECTED; // Cannot kill current kernel process
+    }
 
     // Clean up allocated memory
     if (process->stack_base)
@@ -272,7 +287,7 @@ int process_kill_by_pid(uint32_t pid)
         process_table[pid] = NULL;
     }
 
-    return 1; // Success
+    return PROCESS_SUCCESS; // Success
 }
 
 /**
@@ -493,7 +508,7 @@ void process_list_all(void)
 /**
  * Add process to ready queue
  */
-static void add_to_ready_queue(process_t *process)
+void add_to_ready_queue(process_t *process)
 {
     if (!process || process->state != PROCESS_READY)
         return;
@@ -516,7 +531,7 @@ static void add_to_ready_queue(process_t *process)
 /**
  * Remove process from ready queue
  */
-static void remove_from_ready_queue(process_t *process)
+void remove_from_ready_queue(process_t *process)
 {
     if (!process)
         return;
@@ -544,17 +559,67 @@ static void remove_from_ready_queue(process_t *process)
 }
 
 /**
- * Simple round-robin scheduler - DISABLED FOR STABILITY
+ * Round-robin scheduler with context switching
  */
 void schedule(void)
 {
-    // Scheduler disabled for now - just maintain current process
-    if (!current_process)
-    {
-        current_process = kernel_process;
+    if (!ready_queue_head) {
+        // No processes ready, switch to idle if needed
+        if (current_process != kernel_process) {
+            context_switch(current_process, kernel_process);
+            current_process = kernel_process;
+        }
+        return;
     }
-    // Don't actually switch processes to avoid crashes
-    return;
+
+    // Get next process from ready queue
+    process_t *next_process = ready_queue_head;
+    
+    // If current process is still running and in ready queue, move to back
+    if (current_process && current_process->state == PROCESS_RUNNING) {
+        current_process->state = PROCESS_READY;
+        // Move current process to end of queue if it's not already there
+        if (current_process != ready_queue_tail) {
+            remove_from_ready_queue(current_process);
+            add_to_ready_queue(current_process);
+        }
+    }
+
+    // If next process is the same as current, no switch needed
+    if (next_process == current_process) {
+        return;
+    }
+
+    // Remove next process from ready queue and mark as running
+    remove_from_ready_queue(next_process);
+    next_process->state = PROCESS_RUNNING;
+
+    // Perform context switch
+    process_t *old_process = current_process;
+    current_process = next_process;
+    
+    if (old_process) {
+        context_switch(old_process, next_process);
+    } else {
+        switch_to_process(next_process);
+    }
+}
+
+/**
+ * Scheduler tick - called by timer interrupt
+ */
+void scheduler_tick(void)
+{
+    // Simple time-slice scheduling - switch every tick
+    schedule();
+}
+
+/**
+ * Get next process for scheduling
+ */
+process_t *scheduler_get_next(void)
+{
+    return ready_queue_head;
 }
 
 /**
@@ -675,4 +740,72 @@ process_t *process_create_test(const char *name, void *entry_point, process_prio
     vga_print("Process created successfully with static memory!\n");
 
     return process;
+}
+
+/**
+ * Create a copy of an existing process (for fork)
+ */
+process_t *process_create_copy(process_t *parent)
+{
+    if (!parent) {
+        return NULL;
+    }
+    
+    // Create new process with same entry point and priority
+    process_t *child = process_create_test(parent->name, (void*)parent->cpu_state.eip, parent->priority);
+    if (!child) {
+        return NULL;
+    }
+    
+    // Copy CPU state from parent
+    child->cpu_state = parent->cpu_state;
+    
+    // Set return value for child (fork returns 0 to child)
+    child->cpu_state.eax = 0;
+    
+    // Copy memory contents (simplified - in real OS would copy entire address space)
+    // For now, just copy some basic state
+    child->memory_used = parent->memory_used;
+    
+    return child;
+}
+
+/**
+ * Clean up terminated process
+ */
+void process_cleanup(process_t *process)
+{
+    if (!process) {
+        return;
+    }
+    
+    // Remove from process table
+    if (process->pid < MAX_PROCESSES) {
+        process_table[process->pid] = NULL;
+    }
+    
+    // Remove from ready queue if present
+    remove_from_ready_queue(process);
+    
+    // Mark as free (in static allocation, just clear the structure)
+    memset(process, 0, sizeof(process_t));
+}
+
+/**
+ * Enable actual process execution (replaces the disabled version)
+ */
+void enable_process_execution(void)
+{
+    vga_print("Enabling real process execution with context switching!\n");
+    
+    // Create kernel idle process
+    if (!kernel_process) {
+        kernel_process = process_create_test("kernel_idle", (void*)process_idle_task, PRIORITY_LOW);
+        if (kernel_process) {
+            kernel_process->state = PROCESS_RUNNING;
+            current_process = kernel_process;
+        }
+    }
+    
+    vga_print("Process execution enabled - ready for multitasking!\n");
 }

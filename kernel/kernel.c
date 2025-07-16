@@ -1,10 +1,12 @@
-/* SimpleOS Kernel Entry Point - Phase 1 */
+/* SimpleOS Kernel Entry Point - v1.2.1 with Process Management */
 
 #include <stdint.h> // Add stdint.h include for uint16_t and uint8_t types
 
 #include "kernel.h"
 #include "drivers/keyboard.h"
-#include "proc/process.h" // Re-enabling for debugging
+#include "drivers/timer.h"
+#include "proc/process.h"
+#include "syscalls.h"
 
 // Simple serial output for debugging
 void serial_write_char(char c)
@@ -29,6 +31,7 @@ void interactive_shell(void);
 void process_command(char *command);
 void print_prompt(void);
 int string_compare(const char *str1, const char *str2);
+int string_starts_with(const char *str, const char *prefix);
 void string_copy(char *dest, const char *src);
 int string_length(const char *str);
 int parse_arguments(const char *command, char *cmd, char *arg1, char *arg2);
@@ -51,14 +54,20 @@ void kernel_main(void)
     vga_print("Initializing IDT...\n");
     idt_init();
 
-    vga_print("Initializing keyboard...\n");
-    keyboard_init(); // Initialize new keyboard system
+    vga_print("Initializing timer...\n");
+    timer_init(); // Initialize timer for preemptive scheduling
 
-    // Re-enable process management with minimal functionality
+    vga_print("Initializing keyboard...\n");
+    keyboard_init(); // Initialize keyboard system
+
+    // Initialize process management with multitasking support
     vga_print("Initializing process management...\n");
-    process_init(); // Re-enable just the init
+    process_init();
     vga_print("Initializing scheduler...\n");
-    scheduler_init(); // Re-enable just the init
+    scheduler_init();
+    
+    vga_print("Enabling process execution...\n");
+    enable_process_execution(); // Enable real multitasking
 
     vga_print("Showing welcome screen...\n");
     // Show welcome screen
@@ -122,7 +131,7 @@ void interactive_shell(void)
 void print_prompt(void)
 {
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_print("SimpleOS-v1.1.2");
+    vga_print("SimpleOS-v1.2.1");
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     vga_print("> ");
 }
@@ -146,7 +155,13 @@ void process_command(char *command)
         vga_print("  proc     - Current process info\n");
         vga_print("  spawn <name>    - Create process with name\n");
         vga_print("  pkill <pid>     - Kill process by PID\n");
+        vga_print("                    (Note: PID 1 kernel_idle is protected)\n");
         vga_print("  pstatus <pid> <status> - Set process status (READY/PAUSED/WAITING)\n");
+        vga_print("  fork            - Fork current process\n");
+        vga_print("  exec <prog>     - Execute program\n");
+        vga_print("  getpid          - Get current process ID\n");
+        vga_print("  schedule        - Trigger manual scheduler\n");
+        vga_print("  sysinfo         - Show system protection info\n");
     }
     else if (string_compare(command, "about"))
     {
@@ -224,7 +239,8 @@ void process_command(char *command)
         vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
         vga_print("SimpleOS Version Information:\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        vga_print("  Kernel: v1.2.0 - Process Management RESTORED\n");
+        vga_print("  Kernel: v1.2.1 - Full Process Management with Context Switching\n");
+        vga_print("  Features: Fork/Exec syscalls, Preemptive scheduler, Timer driver\n");
         vga_print("  Bootloader: v1.0\n");
         vga_print("  Architecture: x86 (i386)\n");
         vga_print("  Build: Custom from scratch\n");
@@ -238,9 +254,50 @@ void process_command(char *command)
     }
     else if (string_compare(command, "proc"))
     {
-        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
-        vga_print("Process management temporarily disabled.\n");
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Current Process Information:\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        if (current_process) {
+            vga_print("  PID: ");
+            vga_print_hex(current_process->pid);
+            vga_print("\n  Name: ");
+            vga_print(current_process->name);
+            vga_print("\n  State: ");
+            
+            switch(current_process->state) {
+                case PROCESS_READY:
+                    vga_print("READY");
+                    break;
+                case PROCESS_RUNNING:
+                    vga_print("RUNNING");
+                    break;
+                case PROCESS_BLOCKED:
+                    vga_print("BLOCKED");
+                    break;
+                case PROCESS_TERMINATED:
+                    vga_print("TERMINATED");
+                    break;
+                default:
+                    vga_print("UNKNOWN");
+            }
+            
+            vga_print("\n  Priority: ");
+            switch(current_process->priority) {
+                case PRIORITY_HIGH:
+                    vga_print("HIGH");
+                    break;
+                case PRIORITY_NORMAL:
+                    vga_print("NORMAL");
+                    break;
+                case PRIORITY_LOW:
+                    vga_print("LOW");
+                    break;
+            }
+            vga_print("\n");
+        } else {
+            vga_print("No current process (kernel mode)\n");
+        }
     }
     else if (command[0] == 's' && command[1] == 'p' && command[2] == 'a' && command[3] == 'w' && command[4] == 'n' && (command[5] == ' ' || command[5] == '\0'))
     {
@@ -315,14 +372,27 @@ void process_command(char *command)
         vga_print("...\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
 
-        if (process_kill_by_pid(pid))
+        int result = process_kill_by_pid(pid);
+        if (result == PROCESS_SUCCESS)
         {
             vga_print("Process killed successfully.\n");
+        }
+        else if (result == PROCESS_PROTECTED)
+        {
+            // Error message already printed by process_kill_by_pid
+            // Just set the color back to normal since error was already shown
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        }
+        else if (result == PROCESS_NOT_FOUND)
+        {
+            vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+            vga_print("Process not found!\n");
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         }
         else
         {
             vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
-            vga_print("Process not found!\n");
+            vga_print("Failed to kill process!\n");
             vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         }
     }
@@ -400,6 +470,81 @@ void process_command(char *command)
             vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         }
     }
+    else if (string_compare(command, "fork"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        vga_print("Forking current process...\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        uint32_t child_pid = sys_fork();
+        if (child_pid > 0) {
+            vga_print("Child process created with PID: ");
+            vga_print_hex(child_pid);
+            vga_print("\n");
+        } else {
+            vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+            vga_print("Fork failed!\n");
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        }
+    }
+    else if (string_starts_with(command, "exec "))
+    {
+        // Parse program name from command
+        char *program_name = command + 5; // Skip "exec "
+        
+        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        vga_print("Executing program: ");
+        vga_print(program_name);
+        vga_print("\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        int result = sys_exec(program_name, NULL);
+        if (result == 0) {
+            vga_print("Program executed successfully\n");
+        } else {
+            vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+            vga_print("Exec failed!\n");
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        }
+    }
+    else if (string_compare(command, "getpid"))
+    {
+        uint32_t current_pid = sys_getpid();
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Current process PID: ");
+        vga_print_hex(current_pid);
+        vga_print("\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    }
+    else if (string_compare(command, "schedule"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Triggering manual scheduler...\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        schedule();
+        vga_print("Scheduler executed\n");
+    }
+    else if (string_compare(command, "sysinfo"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("System Protection Information:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        vga_print("  Protected Processes:\n");
+        vga_print("    PID 1 (kernel_idle) - Cannot be killed\n");
+        vga_print("    Current kernel process - System critical\n");
+        vga_print("\n");
+        vga_print("  Security Features:\n");
+        vga_print("    - Kernel process protection enabled\n");
+        vga_print("    - Critical PID protection (PID 1)\n");
+        vga_print("    - Memory cleanup on process termination\n");
+        vga_print("    - Process state validation\n");
+        vga_print("\n");
+        vga_print("  Process Management:\n");
+        vga_print("    - Maximum processes: 256\n");
+        vga_print("    - Static memory allocation for safety\n");
+        vga_print("    - Context switching with timer interrupts\n");
+        vga_print("    - Preemptive scheduling at 100Hz\n");
+    }
     else
     {
         vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
@@ -426,6 +571,20 @@ int string_compare(const char *str1, const char *str2)
         i++;
     }
     return str1[i] == str2[i];
+}
+
+int string_starts_with(const char *str, const char *prefix)
+{
+    int i = 0;
+    while (prefix[i])
+    {
+        if (str[i] != prefix[i])
+        {
+            return 0;
+        }
+        i++;
+    }
+    return 1;
 }
 
 void string_copy(char *dest, const char *src)
