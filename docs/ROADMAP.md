@@ -2,7 +2,7 @@
 
 This document outlines the development progress and future plans for SimpleOS.
 
-## Current State (v1.3 - July 2025)
+## Current State (v1.3.0 - July 2025)
 
 ✅ **What We Have:**
 - **Bootloader**: Complete 16-bit to 32-bit transition with GDT setup
@@ -11,7 +11,7 @@ This document outlines the development progress and future plans for SimpleOS.
 - **Process Management**: Complete PCB implementation with process creation and lifecycle
 - **Context Switching**: Assembly-optimized CPU state saving/restoring
 - **Preemptive Scheduler**: Round-robin scheduling with timer-based task switching
-- **Memory Management**: Heap allocator with kmalloc/kfree implementation
+- **Advanced Memory Management**: Complete memory subsystem with PMM, VMM, protection, and advanced heap
 - **Timer Driver**: PIT-based system timer for scheduler interrupts
 - **Interactive Shell**: Command-line interface with multiple built-in commands
 - **Interrupt Handling**: IDT setup and keyboard/timer interrupt handlers
@@ -31,13 +31,18 @@ This document outlines the development progress and future plans for SimpleOS.
 - `create <name>` - Dynamic process creation
 - `kill <pid>` - Process termination
 
-## Current Development Branch: v1.2.5-memory-management
+## Current Development Branch: main
 
-🎯 **Current Sprint Goals:**
+🎯 **Memory Management Sprint Complete!** ✅
 - [x] **Paging System**: Virtual memory with page tables ✅
 - [x] **Physical Memory Manager**: Frame allocation/deallocation ✅
 - [x] **Memory Protection**: User/kernel space separation ✅
 - [x] **Advanced Heap**: Free list optimization and fragmentation handling ✅
+
+🎯 **Next Sprint Goals: System Calls & Process Enhancements**
+- [ ] **System Calls**: fork() and exec() implementation
+- [ ] **Process Synchronization**: Mutexes and semaphores
+- [ ] **Syscall Interface**: INT 0x80 handler and parameter validation
 
 ## Phase 1: Enhanced Kernel Foundation (Current Focus)
 
