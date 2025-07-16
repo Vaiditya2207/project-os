@@ -5,12 +5,12 @@
 #include "proc/process.h"
 
 // System call numbers
-#define SYS_EXIT    1
-#define SYS_FORK    2
-#define SYS_EXEC    3
-#define SYS_WAIT    4
-#define SYS_GETPID  5
-#define SYS_KILL    6
+#define SYS_EXIT 1
+#define SYS_FORK 2
+#define SYS_EXEC 3
+#define SYS_WAIT 4
+#define SYS_GETPID 5
+#define SYS_KILL 6
 
 // System call interface
 void syscall_init(void);

@@ -4,7 +4,7 @@
 #include "kernel.h"
 
 // Timer frequency (Hz)
-#define TIMER_FREQUENCY 100  // 100 Hz = 10ms intervals
+#define TIMER_FREQUENCY 100 // 100 Hz = 10ms intervals
 
 // Timer functions
 void timer_init(void);

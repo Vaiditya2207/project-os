@@ -160,13 +160,14 @@ void vga_print_hex(uint32_t value)
     char buffer[11]; // "0x" + 8 hex digits + null terminator
     buffer[0] = '0';
     buffer[1] = 'x';
-    
+
     // Convert to hex string
     const char hex_chars[] = "0123456789ABCDEF";
-    for (int i = 7; i >= 0; i--) {
+    for (int i = 7; i >= 0; i--)
+    {
         buffer[2 + (7 - i)] = hex_chars[(value >> (i * 4)) & 0xF];
     }
     buffer[10] = '\0';
-    
+
     vga_print(buffer);
 }

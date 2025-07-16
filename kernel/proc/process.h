@@ -48,10 +48,10 @@ typedef struct process
     uint32_t *page_directory; // Virtual memory page directory
 
     // Memory management
-    uint32_t stack_base; // Stack base address
-    uint32_t stack_size; // Stack size
-    uint32_t heap_base;  // Heap base address
-    uint32_t heap_size;  // Current heap size
+    uint32_t stack_base;  // Stack base address
+    uint32_t stack_size;  // Stack size
+    uint32_t heap_base;   // Heap base address
+    uint32_t heap_size;   // Current heap size
     uint32_t memory_used; // Total memory used
 
     // Scheduling information
@@ -72,7 +72,7 @@ typedef struct process
     struct process *prev; // Previous process in scheduler queue
 } process_t;
 
-//Process manager configuration
+// Process manager configuration
 #define MAX_PROCESSES 256
 #define DEFAULT_TIME_SLICE 10 // Default time slice in timer ticks
 #define STACK_SIZE 4096       // Default stack size (4KB)

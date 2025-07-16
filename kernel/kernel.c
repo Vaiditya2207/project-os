@@ -65,7 +65,7 @@ void kernel_main(void)
     process_init();
     vga_print("Initializing scheduler...\n");
     scheduler_init();
-    
+
     vga_print("Enabling process execution...\n");
     enable_process_execution(); // Enable real multitasking
 
@@ -131,7 +131,7 @@ void interactive_shell(void)
 void print_prompt(void)
 {
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_print("SimpleOS-v1.2.1");
+    vga_print("SimpleOS-v1.2.2");
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     vga_print("> ");
 }
@@ -151,6 +151,7 @@ void process_command(char *command)
         vga_print("  memory   - Memory information\n");
         vga_print("  clear    - Clear screen\n");
         vga_print("  version  - Show version info\n");
+        vga_print("  keytest  - Test enhanced keyboard features\n");
         vga_print("  ps       - List all processes\n");
         vga_print("  proc     - Current process info\n");
         vga_print("  spawn <name>    - Create process with name\n");
@@ -239,11 +240,60 @@ void process_command(char *command)
         vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
         vga_print("SimpleOS Version Information:\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        vga_print("  Kernel: v1.2.1 - Full Process Management with Context Switching\n");
-        vga_print("  Features: Fork/Exec syscalls, Preemptive scheduler, Timer driver\n");
+        vga_print("  Kernel: v1.2.2 - Enhanced Keyboard Driver with Special Characters\n");
+        vga_print("  Features: Caps Lock, Shift, Tab, Special chars, Full ASCII support\n");
+        vga_print("  Previous: v1.2.1 - Full Process Management with Context Switching\n");
         vga_print("  Bootloader: v1.0\n");
         vga_print("  Architecture: x86 (i386)\n");
         vga_print("  Build: Custom from scratch\n");
+    }
+    else if (string_compare(command, "keytest"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Enhanced Keyboard Test Mode:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        vga_print("Test these features:\n");
+        vga_print("  - Letters: abcdefghijklmnopqrstuvwxyz\n");
+        vga_print("  - Numbers: 1234567890\n");
+        vga_print("  - Shift+Numbers: !@#$%^&*()\n");
+        vga_print("  - Special chars: []{}\\|;:'\"<>,./?`~-=_+\n");
+        vga_print("  - Caps Lock (toggle with Caps Lock key)\n");
+        vga_print("  - Tab (inserts 4 spaces)\n");
+        vga_print("  - Backspace (deletes characters)\n");
+        vga_print("\nType anything to test, 'exit' to return:\n");
+
+        while (1)
+        {
+            vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+            vga_print("KeyTest> ");
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+            char *test_input = keyboard_get_input();
+
+            if (string_compare(test_input, "exit"))
+            {
+                vga_print("Keyboard test completed!\n");
+                break;
+            }
+
+            vga_print("You typed: '");
+            vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
+            vga_print(test_input);
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+            vga_print("' (length: ");
+
+            // Print length
+            int len = string_length(test_input);
+            if (len < 10)
+            {
+                vga_putchar('0' + len);
+            }
+            else
+            {
+                vga_putchar('0' + (len / 10));
+                vga_putchar('0' + (len % 10));
+            }
+            vga_print(")\n");
+        }
     }
     else if (string_compare(command, "ps"))
     {
@@ -257,45 +307,50 @@ void process_command(char *command)
         vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
         vga_print("Current Process Information:\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        if (current_process) {
+
+        if (current_process)
+        {
             vga_print("  PID: ");
             vga_print_hex(current_process->pid);
             vga_print("\n  Name: ");
             vga_print(current_process->name);
             vga_print("\n  State: ");
-            
-            switch(current_process->state) {
-                case PROCESS_READY:
-                    vga_print("READY");
-                    break;
-                case PROCESS_RUNNING:
-                    vga_print("RUNNING");
-                    break;
-                case PROCESS_BLOCKED:
-                    vga_print("BLOCKED");
-                    break;
-                case PROCESS_TERMINATED:
-                    vga_print("TERMINATED");
-                    break;
-                default:
-                    vga_print("UNKNOWN");
+
+            switch (current_process->state)
+            {
+            case PROCESS_READY:
+                vga_print("READY");
+                break;
+            case PROCESS_RUNNING:
+                vga_print("RUNNING");
+                break;
+            case PROCESS_BLOCKED:
+                vga_print("BLOCKED");
+                break;
+            case PROCESS_TERMINATED:
+                vga_print("TERMINATED");
+                break;
+            default:
+                vga_print("UNKNOWN");
             }
-            
+
             vga_print("\n  Priority: ");
-            switch(current_process->priority) {
-                case PRIORITY_HIGH:
-                    vga_print("HIGH");
-                    break;
-                case PRIORITY_NORMAL:
-                    vga_print("NORMAL");
-                    break;
-                case PRIORITY_LOW:
-                    vga_print("LOW");
-                    break;
+            switch (current_process->priority)
+            {
+            case PRIORITY_HIGH:
+                vga_print("HIGH");
+                break;
+            case PRIORITY_NORMAL:
+                vga_print("NORMAL");
+                break;
+            case PRIORITY_LOW:
+                vga_print("LOW");
+                break;
             }
             vga_print("\n");
-        } else {
+        }
+        else
+        {
             vga_print("No current process (kernel mode)\n");
         }
     }
@@ -475,13 +530,16 @@ void process_command(char *command)
         vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
         vga_print("Forking current process...\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
+
         uint32_t child_pid = sys_fork();
-        if (child_pid > 0) {
+        if (child_pid > 0)
+        {
             vga_print("Child process created with PID: ");
             vga_print_hex(child_pid);
             vga_print("\n");
-        } else {
+        }
+        else
+        {
             vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
             vga_print("Fork failed!\n");
             vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
@@ -491,17 +549,20 @@ void process_command(char *command)
     {
         // Parse program name from command
         char *program_name = command + 5; // Skip "exec "
-        
+
         vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
         vga_print("Executing program: ");
         vga_print(program_name);
         vga_print("\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
+
         int result = sys_exec(program_name, NULL);
-        if (result == 0) {
+        if (result == 0)
+        {
             vga_print("Program executed successfully\n");
-        } else {
+        }
+        else
+        {
             vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
             vga_print("Exec failed!\n");
             vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
