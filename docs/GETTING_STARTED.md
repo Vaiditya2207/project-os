@@ -1,99 +1,144 @@
 # Getting Started with SimpleOS
 
-Welcome to your operating system kernel project! This is an incredibly ambitious and impressive project that will showcase deep systems programming knowledge.
+Welcome to SimpleOS - a fully functional operating system kernel with process management, interactive shell, and advanced device drivers!
 
-## What You've Built So Far
+## What You've Built (v1.3)
 
-Your kernel includes:
-- **Bootloader**: Switches from 16-bit to 32-bit mode and loads the kernel
-- **VGA Driver**: Text output with colors and scrolling
-- **Keyboard Driver**: Interrupt-driven keyboard input
-- **Memory Manager**: Basic heap allocation
-- **Interrupt System**: IDT setup with PIC remapping
+SimpleOS is now a sophisticated kernel featuring:
+- **Complete Bootloader**: 16-bit to 32-bit transition with GDT setup
+- **Process Management**: Full PCB implementation with context switching
+- **Preemptive Scheduler**: Round-robin scheduling with timer interrupts
+- **Advanced Device Drivers**: Enhanced VGA, keyboard with modifiers, system timer
+- **Memory Management**: Heap allocator with kmalloc/kfree
+- **Interactive Shell**: Command-line interface with multiple built-in commands
+- **Context Switching**: Assembly-optimized process state management
 
-## First Steps
+## Quick Start
 
-1. **Install Dependencies**:
+1. **Install Dependencies** (macOS):
 ```bash
-make install-deps
+brew install i686-elf-gcc nasm qemu
 ```
 
-2. **Build the OS**:
+2. **Build SimpleOS**:
 ```bash
 make all
 ```
 
-3. **Run in Emulator**:
+3. **Run the Operating System**:
 ```bash
 make run
 ```
 
-You should see:
+You should see the SimpleOS boot sequence followed by an interactive shell:
 ```
+SimpleOS Bootloader v1.0
+Loading kernel...
+
 Welcome to SimpleOS!
 Kernel loaded successfully.
 
 Initializing subsystems...
-✓ IDT initialized
-✓ Memory management initialized
-✓ Keyboard driver initialized
+  Memory management...
+  Interrupt system (IDT)...
+  Keyboard driver...
+  Timer driver...
+  Process management...
+  Scheduler...
 
 SimpleOS is ready!
-Type commands (basic shell coming soon):
-> 
+
+SimpleOS> _
 ```
 
-## Understanding the Code
+## Exploring SimpleOS Features
 
-### Bootloader (`bootloader/boot.asm`)
-- Written in assembly language
-- Handles the transition from BIOS to your kernel
-- Sets up Global Descriptor Table (GDT)
-- Switches CPU to protected mode
+### Interactive Shell Commands
+Once SimpleOS boots, try these commands:
 
-### Kernel Entry (`kernel/kernel.c`)
-- Main kernel function that runs after bootloader
-- Initializes all subsystems
-- Contains the main kernel loop
+- **`help`** - Display all available commands
+- **`about`** - System information and credits  
+- **`version`** - Detailed version and feature information
+- **`clear`** - Clear the screen
+- **`meminfo`** - Display memory usage statistics
+- **`ps`** - List all running processes
+- **`create <name>`** - Create a new test process
+- **`kill <pid>`** - Terminate a process by ID
+- **`keytest`** - Interactive keyboard testing mode
 
-### VGA Driver (`kernel/drivers/vga.c`)
-- Manages text output to screen
-- Handles colors, scrolling, and cursor positioning
-- Memory-mapped I/O to VGA buffer
+### Testing Process Management
+```bash
+SimpleOS> ps                    # List current processes
+SimpleOS> create myprocess      # Create a new process
+SimpleOS> ps                    # See the new process
+SimpleOS> kill 2                # Terminate process ID 2
+```
+
+### Testing Advanced Keyboard Features
+```bash
+SimpleOS> keytest               # Enter keyboard test mode
+# Try typing with:
+# - Shift + letters (uppercase)
+# - Shift + numbers (special symbols !@#$%^&*())
+# - Caps Lock toggle
+# - Special characters []{}|;':"<>,./?`~-=_+
+# - Key repeat (hold any key)
+# - Tab (4 spaces), Backspace, Enter
+```
+
+## Understanding the Architecture
+
+### Process Management (`kernel/proc/`)
+SimpleOS implements full process management with:
+- **Process Control Blocks (PCB)**: Complete process state storage
+- **Context Switching**: Assembly-optimized CPU state saving/restoring
+- **Round-Robin Scheduler**: Preemptive multitasking with equal time slices
+- **Process Creation**: Dynamic process spawning with memory allocation
+- **Process States**: Ready, Running, Blocked, Terminated
+
+### Memory Management (`kernel/mem/`)
+- **Heap Allocator**: kmalloc/kfree with free list management
+- **Per-Process Stacks**: 4KB stacks with overflow protection
+- **Memory Tracking**: Usage statistics and leak detection
+
+### Device Drivers (`kernel/drivers/`)
+- **Enhanced VGA**: Colors, scrolling, cursor, special character handling
+- **Advanced Keyboard**: Full ASCII, modifiers, key repeat, state management
+- **System Timer**: PIT-based interrupts for scheduler preemption
 
 ## Next Development Steps
 
-### Immediate (1-2 weeks)
-1. **Test the Build**: Make sure everything compiles and runs
-2. **Experiment**: Modify the welcome message, change colors
-3. **Add Debug Output**: Implement a simple printf function
+### Immediate Exploration (1-2 days)
+1. **Test All Features**: Try every shell command and explore process management
+2. **Code Reading**: Study the process management and context switching code
+3. **Experimentation**: Modify shell messages, add new commands
 
-### Short Term (1-2 months)
-1. **Better Memory Management**: Implement proper malloc/free
-2. **Timer Driver**: Add system clock for scheduling
-3. **Simple Shell**: Basic command processing
+### Short Term Enhancements (1-2 months)
+1. **System Calls**: Implement INT 0x80 syscall interface
+2. **User Mode**: Add privilege level separation (Ring 0/Ring 3)
+3. **File System Foundation**: VFS layer and basic file operations
+4. **More Process Features**: Process priorities, sleeping, inter-process communication
 
-### Medium Term (3-6 months)
-1. **Process Management**: Task switching and scheduling
-2. **File System**: Basic file operations
-3. **More Drivers**: Mouse, disk controller
+### Medium Term Goals (3-6 months)
+1. **Complete File System**: FAT12 or custom filesystem implementation
+2. **Advanced Memory**: Virtual memory with paging, memory protection
+3. **Network Driver**: Basic Ethernet support for future networking
+4. **Storage Driver**: IDE/SATA hard disk controller
 
-## Debugging Tips
+## Why This Project Demonstrates Exceptional Skill
 
-- **QEMU Monitor**: Ctrl+Alt+2 to access QEMU console
-- **Serial Debug**: Add serial port output for debugging
-- **GDB Integration**: Use `make debug` for step-by-step debugging
+### Technical Achievements
+1. **Complete Process Management**: Full PCB, context switching, and preemptive scheduling
+2. **Assembly Integration**: Hand-optimized context switching in assembly language
+3. **Interrupt Handling**: Timer-based preemption and keyboard interrupt processing
+4. **Memory Management**: Custom heap allocator with proper allocation/deallocation
+5. **Device Driver Development**: Advanced keyboard and VGA drivers with full feature sets
 
-## Learning Resources
-
-- [OSDev Wiki](https://wiki.osdev.org/) - The bible of OS development
-- [Intel Manual](https://software.intel.com/content/www/us/en/develop/articles/intel-sdm.html) - x86 reference
-- [Linux Kernel](https://github.com/torvalds/linux) - Study real implementations
-
-## Why This Project is Resume Gold
-
-1. **Demonstrates Deep Knowledge**: Shows you understand computers at the lowest level
-2. **Rare Skill**: Very few developers have built an OS from scratch
+### Professional Value
+1. **Rare Expertise**: Very few developers have built a complete OS with process management
+2. **Deep System Knowledge**: Demonstrates understanding of computer architecture at the lowest level
+3. **Problem-Solving Skills**: Shows ability to solve complex, low-level programming challenges
+4. **Code Quality**: Well-structured, documented, and modular codebase
 3. **Problem-Solving**: Debugging without standard tools
 4. **Architecture Understanding**: Memory management, interrupts, hardware interfaces
 5. **Long-term Commitment**: Shows ability to work on complex, multi-year projects

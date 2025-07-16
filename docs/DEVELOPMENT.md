@@ -1,6 +1,6 @@
-# Development Guide
+# SimpleOS Development Guide
 
-## Setting Up the Development Environment
+## Development Environment Setup
 
 ### macOS Setup (Recommended)
 
@@ -16,78 +16,100 @@ brew install nasm
 brew install qemu
 ```
 
-3. **Install GRUB** (for creating bootable ISOs):
+3. **Install Additional Tools**:
 ```bash
-brew install grub
+brew install grub         # For creating bootable ISOs
+brew install hexdump      # For debugging binary files
 ```
 
-## Building the OS
+## Building and Testing
 
+### Basic Build Commands
 ```bash
 # Clean previous builds
 make clean
 
-# Build everything
+# Build everything (kernel + bootloader + ISO)
 make all
 
-# Run in QEMU emulator
+# Run in QEMU emulator (recommended)
 make run
 
-# Debug with GDB
+# Debug with GDB (advanced)
 make debug
 ```
 
-## Development Workflow
-
+### Development Workflow
 1. **Edit source code** in kernel/, bootloader/, or libc/
 2. **Build** with `make all`
-3. **Test** with `make run`
-4. **Debug** issues with `make debug`
+3. **Test** with `make run` - boots into SimpleOS shell
+4. **Test features** using built-in commands:
+   - Try `help` for available commands
+   - Test process management with `ps`, `create`, `kill`
+   - Test keyboard with `keytest`
+   - Check memory usage with `meminfo`
+5. **Debug** issues with `make debug` or printf-style debugging
 
-## Project Structure Explained
+## Current Project Structure
 
 ```
 ├── bootloader/         # Bootstrap code
-│   └── boot.asm       # Assembly bootloader
+│   └── boot.asm       # Master Boot Record and kernel loader
 ├── kernel/            # Kernel source code
 │   ├── arch/          # Architecture-specific code
-│   │   ├── idt.c      # Interrupt handling
-│   │   └── idt.asm    # IDT assembly functions
+│   │   ├── context_switch.asm  # Process context switching
+│   │   ├── idt.c      # Interrupt Descriptor Table
+│   │   └── interrupts.asm     # Interrupt handlers
 │   ├── drivers/       # Hardware drivers
-│   │   ├── vga.c      # VGA text mode driver
-│   │   └── keyboard.c # Keyboard input driver
+│   │   ├── vga.c      # Enhanced VGA driver (colors, scrolling)
+│   │   ├── keyboard.c # Advanced keyboard driver (full ASCII)
+│   │   ├── keyboard.h # Keyboard constants and structures
+│   │   ├── timer.c    # System timer driver (PIT)
+│   │   └── timer.h    # Timer constants and functions
+│   ├── proc/          # Process management
+│   │   ├── process.c  # Process control, scheduling, context switching
+│   │   ├── process.h  # Process structures and definitions
+│   │   └── demo_processes.c  # Test processes for scheduler
 │   ├── mem/           # Memory management
-│   │   └── memory.c   # Heap allocation
-│   ├── kernel.c       # Main kernel entry point
-│   ├── kernel.h       # Kernel headers
-│   └── linker.ld      # Linker script
+│   │   └── memory.c   # Heap allocator (kmalloc/kfree)
+│   ├── syscalls.c     # System call framework (foundation)
+│   ├── syscalls.h     # System call definitions
+│   ├── kernel.c       # Main kernel entry and interactive shell
+│   ├── kernel.h       # Core kernel headers and definitions
+│   └── linker.ld      # Linker script for kernel layout
 ├── libc/              # Standard library
-│   └── string.c       # String functions
-├── build/             # Build output (generated)
+│   └── string.c       # String manipulation functions
+├── build/             # Build artifacts (kernel.bin, simpleos.iso)
 ├── iso/               # ISO creation directory
-├── Makefile           # Build system
-└── grub.cfg           # GRUB configuration
+├── docs/              # Documentation
+└── Makefile           # Build system with multiple targets
 ```
 
-## Next Steps for Development
+## Development Areas
 
-### Phase 1: Core Improvements
-1. **Better Memory Management**: Implement proper malloc/free with free lists
-2. **Process Management**: Add task switching and basic scheduler
-3. **File System**: Implement a simple file system (FAT12 or custom)
-4. **More Drivers**: Add timer, mouse, and disk drivers
+### Completed Features (v1.3)
+✅ **Process Management**: Full PCB, context switching, round-robin scheduler  
+✅ **Memory Management**: Heap allocator with kmalloc/kfree  
+✅ **Device Drivers**: Enhanced VGA, advanced keyboard, system timer  
+✅ **Interactive Shell**: Command processing with multiple built-in commands  
+✅ **Boot System**: Complete bootloader with protected mode transition  
 
-### Phase 2: Advanced Features
-1. **Shell**: Command-line interface with basic commands
-2. **User Mode**: Switch between kernel and user space
-3. **System Calls**: Implement proper syscall interface
-4. **Networking**: Basic TCP/IP stack
+### Next Development Priorities
 
-### Phase 3: Full OS Features
-1. **GUI**: Window manager and graphical interface
-2. **Applications**: Text editor, calculator, games
-3. **Package Manager**: Software installation system
-4. **POSIX Compliance**: Unix-like API compatibility
+#### Phase 1: System Calls & User Mode (1-2 months)
+1. **System Call Interface**: Implement INT 0x80 handler and syscall dispatcher
+2. **User/Kernel Separation**: Add privilege level switching and memory protection
+3. **Standard Syscalls**: fork(), exec(), wait(), exit() implementation
+
+#### Phase 2: File System (2-3 months)  
+1. **Virtual File System**: Abstract file system interface
+2. **Simple FS Implementation**: FAT12 or custom file system
+3. **File Operations**: Basic file I/O and directory management
+
+#### Phase 3: Advanced Drivers (1-2 months)
+1. **Storage Driver**: IDE/SATA hard disk support
+2. **Network Interface**: Basic Ethernet driver
+3. **Additional I/O**: Serial port, mouse support
 
 ## Debugging Tips
 
