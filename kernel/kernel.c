@@ -4,17 +4,21 @@
 
 #include "kernel.h"
 #include "drivers/keyboard.h"
-#include "proc/process.h"  // Re-enabling for debugging
+#include "proc/process.h" // Re-enabling for debugging
 
 // Simple serial output for debugging
-void serial_write_char(char c) {
+void serial_write_char(char c)
+{
     // Write to COM1 (0x3F8)
-    while (!(inb(0x3F8 + 5) & 0x20));  // Wait for transmitter ready
+    while (!(inb(0x3F8 + 5) & 0x20))
+        ; // Wait for transmitter ready
     outb(0x3F8, c);
 }
 
-void serial_write_string(const char *str) {
-    while (*str) {
+void serial_write_string(const char *str)
+{
+    while (*str)
+    {
         serial_write_char(*str++);
     }
 }
@@ -59,10 +63,11 @@ void kernel_main(void)
     show_welcome_screen();
 
     vga_print("DEBUG: Welcome screen shown, starting shell...\n");
-    
+
     // Small delay to let welcome screen render
-    for (volatile int i = 0; i < 1000000; i++);
-    
+    for (volatile int i = 0; i < 1000000; i++)
+        ;
+
     // Start interactive shell
     interactive_shell();
 
@@ -91,69 +96,24 @@ void show_welcome_screen(void)
     // Brief instruction
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_print("Try any command!\n\n");
-    
+
     vga_print("DEBUG: Welcome screen completed\n");
 }
 
 void interactive_shell(void)
 {
-    char input_buffer[256];
-    int buffer_index = 0;
-    
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     vga_print("Starting interactive shell...\n\n");
-    
-    // Clear keyboard buffer before starting
-    keyboard_clear_buffer();
-    
-    // Small delay to let things settle
-    for (volatile int i = 0; i < 500000; i++);
-
-    // Show first prompt
-    print_prompt();
 
     while (1)
     {
-        char c = keyboard_getchar();
-        
-        if (c != 0) // Valid character received
+        print_prompt();
+        char *command = keyboard_get_input(); // Use new keyboard system
+
+        if (string_length(command) > 0)
         {
-            if (c == '\n') // Enter key pressed
-            {
-                vga_print("\n");
-                
-                if (buffer_index > 0)
-                {
-                    input_buffer[buffer_index] = '\0'; // Null terminate
-                    process_command(input_buffer);
-                    buffer_index = 0; // Reset buffer
-                }
-                
-                print_prompt();
-            }
-            else if (c == '\b') // Backspace
-            {
-                if (buffer_index > 0)
-                {
-                    buffer_index--;
-                    vga_print("\b \b"); // Move back, print space, move back again
-                }
-            }
-            else if (c >= 32 && c <= 126 && buffer_index < 255) // Printable characters
-            {
-                input_buffer[buffer_index] = c;
-                buffer_index++;
-                
-                // Echo the character
-                char temp_str[2];
-                temp_str[0] = c;
-                temp_str[1] = '\0';
-                vga_print(temp_str);
-            }
+            process_command(command);
         }
-        
-        // Small delay to prevent excessive CPU usage
-        for (volatile int i = 0; i < 1000; i++);
     }
 }
 
@@ -246,9 +206,12 @@ void process_command(char *command)
         vga_print("Current Process Information:\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         process_t *current = scheduler_get_current();
-        if (current) {
+        if (current)
+        {
             process_print_info(current);
-        } else {
+        }
+        else
+        {
             vga_print("No current process (kernel mode)\n");
         }
     }

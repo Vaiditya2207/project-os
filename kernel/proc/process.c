@@ -22,22 +22,22 @@ process_t *process_create_test(const char *name, void *entry_point, process_prio
 void process_init(void)
 {
     vga_print("  Initializing process table...\n");
-    
+
     // Initialize process table
     for (int i = 0; i < MAX_PROCESSES; i++)
     {
         process_table[i] = NULL;
     }
-    
+
     vga_print("  Process table initialized...\n");
-    
+
     // Initialize global state
     current_process = NULL;
     kernel_process = NULL;
     next_pid = 1;
     ready_queue_head = NULL;
     ready_queue_tail = NULL;
-    
+
     vga_print("  Process management ready\n");
 }
 
@@ -48,25 +48,29 @@ process_t *process_create(const char *name, void *entry_point, process_priority_
 {
     // Allocate process control block (PCB)
     process_t *process = (process_t *)kmalloc(sizeof(process_t));
-    if (!process) {
+    if (!process)
+    {
         return NULL;
     }
 
     // Initialize all memory to zero first (safer approach)
-    for (int i = 0; i < sizeof(process_t); i++) {
-        ((char*)process)[i] = 0;
+    for (int i = 0; i < sizeof(process_t); i++)
+    {
+        ((char *)process)[i] = 0;
     }
 
     // Allocate unique PID
     uint32_t pid = process_allocate_pid();
-    if (pid == 0) {
+    if (pid == 0)
+    {
         kfree(process);
         return NULL;
     }
 
     // Allocate stack memory
     void *stack = kmalloc(STACK_SIZE);
-    if (!stack) {
+    if (!stack)
+    {
         kfree(process);
         return NULL;
     }
@@ -75,28 +79,29 @@ process_t *process_create(const char *name, void *entry_point, process_priority_
     process->pid = pid;
     process->parent_pid = 0;
     process->priority = priority;
-    
+
     // Initialize CPU state
     process->cpu_state.eip = (uint32_t)entry_point;
     process->cpu_state.esp = (uint32_t)stack + STACK_SIZE - 4;
     process->cpu_state.eflags = 0x202;
-    
+
     // Memory management
     process->stack_base = (uint32_t)stack;
     process->stack_size = STACK_SIZE;
     process->heap_base = 0;
     process->heap_size = 0;
-    
+
     // Scheduling information
     process->time_slice = DEFAULT_TIME_SLICE;
     process->total_runtime = 0;
     process->sleep_until = 0;
-    
+
     // Process relationships - already zeroed
-    
+
     // Copy process name
     int i;
-    for (i = 0; i < 63 && name[i] != '\0'; i++) {
+    for (i = 0; i < 63 && name[i] != '\0'; i++)
+    {
         process->name[i] = name[i];
     }
     process->name[i] = '\0';
@@ -106,7 +111,7 @@ process_t *process_create(const char *name, void *entry_point, process_priority_
 
     // Set state last (this was the problematic field)
     process->state = PROCESS_READY;
-    
+
     // Add to ready queue
     add_to_ready_queue(process);
 
