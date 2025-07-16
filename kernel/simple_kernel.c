@@ -5,11 +5,13 @@
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 
-void simple_print(const char* str, int row) {
-    volatile unsigned short* vga = (volatile unsigned short*)VGA_MEMORY;
+void simple_print(const char *str, int row)
+{
+    volatile unsigned short *vga = (volatile unsigned short *)VGA_MEMORY;
     int col = 0;
-    
-    while (*str && col < VGA_WIDTH) {
+
+    while (*str && col < VGA_WIDTH)
+    {
         // White text on black background
         vga[row * VGA_WIDTH + col] = (unsigned short)*str | (0x07 << 8);
         str++;
@@ -17,13 +19,15 @@ void simple_print(const char* str, int row) {
     }
 }
 
-void kernel_main(void) {
+void kernel_main(void)
+{
     // Clear screen
-    volatile unsigned short* vga = (volatile unsigned short*)VGA_MEMORY;
-    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+    volatile unsigned short *vga = (volatile unsigned short *)VGA_MEMORY;
+    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++)
+    {
         vga[i] = (unsigned short)' ' | (0x07 << 8);
     }
-    
+
     // Print test messages
     simple_print("SimpleOS - Ultra Simple Test Kernel", 0);
     simple_print("", 1);
@@ -35,10 +39,12 @@ void kernel_main(void) {
     simple_print("", 7);
     simple_print("Kernel is now in infinite loop - this is normal.", 8);
     simple_print("Press Ctrl+Alt+Q to quit QEMU.", 9);
-    
+
     // Infinite loop
-    while (1) {
+    while (1)
+    {
         // Do nothing, just stay alive
-        for (volatile int i = 0; i < 10000000; i++);
+        for (volatile int i = 0; i < 10000000; i++)
+            ;
     }
 }

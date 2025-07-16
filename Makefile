@@ -28,7 +28,10 @@ KERNEL_OBJ = $(KERNEL_SRC:.c=.o) $(KERNEL_ASM:.asm=.o)
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 ISO_FILE = $(BUILD_DIR)/simpleos.iso
 
-.PHONY: all clean install-deps run debug
+.PHONY: all clean install-deps run debug print-vars
+
+print-vars:
+	@echo "KERNEL_OBJ: $(KERNEL_OBJ)"
 
 all: $(ISO_FILE)
 
