@@ -4,11 +4,11 @@
 #include "../kernel.h"
 
 // Physical Memory Manager constants
-#define PAGE_SIZE 4096
-#define PAGE_ALIGN(addr) (((addr) + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1))
-#define PAGE_ALIGN_DOWN(addr) ((addr) & ~(PAGE_SIZE - 1))
-#define ADDR_TO_FRAME(addr) ((addr) / PAGE_SIZE)
-#define FRAME_TO_ADDR(frame) ((frame) * PAGE_SIZE)
+#define PMM_PAGE_SIZE 4096
+#define PMM_PAGE_ALIGN(addr) (((addr) + PMM_PAGE_SIZE - 1) & ~(PMM_PAGE_SIZE - 1))
+#define PMM_PAGE_ALIGN_DOWN(addr) ((addr) & ~(PMM_PAGE_SIZE - 1))
+#define ADDR_TO_FRAME(addr) ((addr) / PMM_PAGE_SIZE)
+#define FRAME_TO_ADDR(frame) ((frame) * PMM_PAGE_SIZE)
 
 // Maximum supported physical memory (4GB)
 #define MAX_MEMORY_SIZE (4UL * 1024 * 1024 * 1024)

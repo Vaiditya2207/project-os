@@ -36,7 +36,7 @@ void pmm_init(void)
     }
     
     // Calculate total frames
-    pmm_info.total_frames = pmm_info.memory_size / PAGE_SIZE;
+    pmm_info.total_frames = pmm_info.memory_size / PMM_PAGE_SIZE;
     pmm_info.used_frames = pmm_info.total_frames; // All used initially
     pmm_info.free_frames = 0;
     
@@ -70,11 +70,11 @@ void pmm_init(void)
 void pmm_init_region(uint32_t start_addr, uint32_t size)
 {
     // Align to page boundaries
-    uint32_t aligned_start = PAGE_ALIGN_DOWN(start_addr);
-    uint32_t aligned_end = PAGE_ALIGN_DOWN(start_addr + size);
+    uint32_t aligned_start = PMM_PAGE_ALIGN_DOWN(start_addr);
+    uint32_t aligned_end = PMM_PAGE_ALIGN_DOWN(start_addr + size);
     
     // Mark frames as available
-    for (uint32_t addr = aligned_start; addr < aligned_end; addr += PAGE_SIZE) {
+    for (uint32_t addr = aligned_start; addr < aligned_end; addr += PMM_PAGE_SIZE) {
         pmm_clear_frame(addr);
     }
 }
@@ -85,11 +85,11 @@ void pmm_init_region(uint32_t start_addr, uint32_t size)
 void pmm_deinit_region(uint32_t start_addr, uint32_t size)
 {
     // Align to page boundaries
-    uint32_t aligned_start = PAGE_ALIGN_DOWN(start_addr);
-    uint32_t aligned_end = PAGE_ALIGN(start_addr + size);
+    uint32_t aligned_start = PMM_PAGE_ALIGN_DOWN(start_addr);
+    uint32_t aligned_end = PMM_PAGE_ALIGN(start_addr + size);
     
     // Mark frames as used
-    for (uint32_t addr = aligned_start; addr < aligned_end; addr += PAGE_SIZE) {
+    for (uint32_t addr = aligned_start; addr < aligned_end; addr += PMM_PAGE_SIZE) {
         pmm_set_frame(addr);
     }
 }
@@ -116,7 +116,7 @@ uint32_t pmm_alloc_frame(void)
 void pmm_free_frame(uint32_t frame_addr)
 {
     // Align to frame boundary
-    frame_addr = PAGE_ALIGN_DOWN(frame_addr);
+    frame_addr = PMM_PAGE_ALIGN_DOWN(frame_addr);
     
     // Validate frame address
     if (frame_addr < pmm_info.memory_start || frame_addr >= pmm_info.memory_end) {
@@ -142,7 +142,7 @@ uint32_t pmm_alloc_frames(uint32_t count)
     
     // Mark all frames as used
     for (uint32_t i = 0; i < count; i++) {
-        pmm_set_frame(start_frame + (i * PAGE_SIZE));
+        pmm_set_frame(start_frame + (i * PMM_PAGE_SIZE));
     }
     
     return start_frame;
@@ -154,7 +154,7 @@ uint32_t pmm_alloc_frames(uint32_t count)
 void pmm_free_frames(uint32_t start_addr, uint32_t count)
 {
     for (uint32_t i = 0; i < count; i++) {
-        pmm_free_frame(start_addr + (i * PAGE_SIZE));
+        pmm_free_frame(start_addr + (i * PMM_PAGE_SIZE));
     }
 }
 
@@ -224,7 +224,7 @@ uint32_t pmm_first_free_frame(void)
                 if (!(frame_bitmap[byte] & (1 << bit))) {
                     uint32_t frame = (byte * 8) + bit;
                     if (frame < pmm_info.total_frames) {
-                        return pmm_info.memory_start + (frame * PAGE_SIZE);
+                        return pmm_info.memory_start + (frame * PMM_PAGE_SIZE);
                     }
                 }
             }
@@ -243,7 +243,7 @@ uint32_t pmm_first_free_frames(uint32_t count)
     uint32_t start_frame = 0;
     
     for (uint32_t frame = 0; frame < pmm_info.total_frames; frame++) {
-        uint32_t addr = pmm_info.memory_start + (frame * PAGE_SIZE);
+        uint32_t addr = pmm_info.memory_start + (frame * PMM_PAGE_SIZE);
         
         if (!pmm_test_frame(addr)) {
             // Frame is free
@@ -253,7 +253,7 @@ uint32_t pmm_first_free_frames(uint32_t count)
             consecutive++;
             
             if (consecutive >= count) {
-                return pmm_info.memory_start + (start_frame * PAGE_SIZE);
+                return pmm_info.memory_start + (start_frame * PMM_PAGE_SIZE);
             }
         } else {
             // Frame is used, reset counter
@@ -285,13 +285,13 @@ void pmm_print_stats(void)
     vga_print(" frames)\n");
     
     vga_print("  Used memory: ");
-    vga_print_decimal((pmm_info.used_frames * PAGE_SIZE) / 1024);
+    vga_print_decimal((pmm_info.used_frames * PMM_PAGE_SIZE) / 1024);
     vga_print("KB (");
     vga_print_decimal(pmm_info.used_frames);
     vga_print(" frames)\n");
     
     vga_print("  Free memory: ");
-    vga_print_decimal((pmm_info.free_frames * PAGE_SIZE) / 1024);
+    vga_print_decimal((pmm_info.free_frames * PMM_PAGE_SIZE) / 1024);
     vga_print("KB (");
     vga_print_decimal(pmm_info.free_frames);
     vga_print(" frames)\n");
@@ -310,7 +310,7 @@ uint32_t pmm_get_total_memory(void)
  */
 uint32_t pmm_get_free_memory(void)
 {
-    return pmm_info.free_frames * PAGE_SIZE;
+    return pmm_info.free_frames * PMM_PAGE_SIZE;
 }
 
 /**
@@ -318,7 +318,7 @@ uint32_t pmm_get_free_memory(void)
  */
 uint32_t pmm_get_used_memory(void)
 {
-    return pmm_info.used_frames * PAGE_SIZE;
+    return pmm_info.used_frames * PMM_PAGE_SIZE;
 }
 
 /**

@@ -20,6 +20,13 @@ This document outlines the development progress and future plans for SimpleOS.
 - `help`, `about`, `clear`, `version` - System information
 - `keytest` - Interactive keyboard testing
 - `meminfo` - Memory usage statistics
+- `memstat` - Physical memory statistics (PMM)
+- `memtest` - Physical memory allocation tests
+- `vmstat` - Virtual memory statistics (VMM)
+- `vmtest` - Virtual memory allocation tests
+- `prottest` - Memory protection tests
+- `heapstat` - Advanced heap statistics
+- `heaptest` - Advanced heap allocation tests
 - `ps` - Process listing
 - `create <name>` - Dynamic process creation
 - `kill <pid>` - Process termination
@@ -27,19 +34,19 @@ This document outlines the development progress and future plans for SimpleOS.
 ## Current Development Branch: v1.2.5-memory-management
 
 🎯 **Current Sprint Goals:**
-- [ ] **Paging System**: Virtual memory with page tables
-- [ ] **Physical Memory Manager**: Frame allocation/deallocation
-- [ ] **Memory Protection**: User/kernel space separation
-- [ ] **Advanced Heap**: Free list optimization and fragmentation handling
+- [x] **Paging System**: Virtual memory with page tables ✅
+- [x] **Physical Memory Manager**: Frame allocation/deallocation ✅
+- [x] **Memory Protection**: User/kernel space separation ✅
+- [x] **Advanced Heap**: Free list optimization and fragmentation handling ✅
 
 ## Phase 1: Enhanced Kernel Foundation (Current Focus)
 
 ### 1.1 Memory Management Improvements
 - [x] **Basic Heap Allocator**: kmalloc/kfree implementation ✅
-- [ ] **Paging System**: Virtual memory with page tables
-- [ ] **Physical Memory Manager**: Frame allocation/deallocation
-- [ ] **Memory Protection**: User/kernel space separation
-- [ ] **Advanced Heap**: Free list optimization and fragmentation handling
+- [x] **Paging System**: Virtual memory with page tables ✅
+- [x] **Physical Memory Manager**: Frame allocation/deallocation ✅
+- [x] **Memory Protection**: User/kernel space separation ✅
+- [x] **Advanced Heap**: Free list optimization and fragmentation handling ✅
 
 ### 1.2 Process Management Enhancements
 - [x] **Process Control Blocks**: Complete process state management ✅

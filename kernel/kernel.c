@@ -7,6 +7,8 @@
 #include "drivers/timer.h"
 #include "proc/process.h"
 #include "syscalls.h"
+#include "mem/vmm.h"
+#include "mem/advanced_heap.h"
 
 // Simple serial output for debugging
 void serial_write_char(char c)
@@ -53,6 +55,12 @@ void kernel_main(void)
 
     vga_print("Initializing physical memory manager...\n");
     pmm_init();
+
+    vga_print("Initializing virtual memory manager...\n");
+    vmm_init();
+
+    vga_print("Initializing advanced heap manager...\n");
+    advanced_heap_init();
 
     vga_print("Initializing IDT...\n");
     idt_init();
@@ -154,6 +162,11 @@ void process_command(char *command)
         vga_print("  memory   - Memory information\n");
         vga_print("  memstat  - Physical memory statistics\n");
         vga_print("  memtest  - Test physical memory allocation\n");
+        vga_print("  vmstat   - Virtual memory statistics\n");
+        vga_print("  vmtest   - Test virtual memory allocation\n");
+        vga_print("  prottest - Test memory protection features\n");
+        vga_print("  heapstat - Advanced heap statistics\n");
+        vga_print("  heaptest - Test advanced heap features\n");
         vga_print("  clear    - Clear screen\n");
         vga_print("  version  - Show version info\n");
         vga_print("  keytest  - Test enhanced keyboard features\n");
@@ -246,6 +259,75 @@ void process_command(char *command)
         vga_print("Running Physical Memory Tests:\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         pmm_test_allocation();
+    }
+    else if (string_compare(command, "vmstat"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Virtual Memory Statistics:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        vmm_print_stats();
+    }
+    else if (string_compare(command, "vmtest"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Running Virtual Memory Tests:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        vmm_test_paging();
+    }
+    else if (string_compare(command, "prottest"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Testing Memory Protection:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        
+        // Test user directory creation
+        void *user_dir = vmm_create_user_directory();
+        if (user_dir) {
+            vga_print("  User page directory created: 0x");
+            vga_print_hex((uint32_t)user_dir);
+            vga_print("\n");
+            
+            // Test user stack setup
+            if (vmm_setup_user_stack(user_dir, 0xBFFFF000, 0x1000)) {
+                vga_print("  User stack setup: PASSED\n");
+            } else {
+                vga_print("  User stack setup: FAILED\n");
+            }
+            
+            // Test user heap setup
+            if (vmm_setup_user_heap(user_dir, 0x10000000, 0x1000)) {
+                vga_print("  User heap setup: PASSED\n");
+            } else {
+                vga_print("  User heap setup: FAILED\n");
+            }
+            
+            // Test address validation
+            bool valid = vmm_is_address_valid(user_dir, 0xBFFFE000, true, true);
+            vga_print("  User stack access validation: ");
+            vga_print(valid ? "PASSED\n" : "FAILED\n");
+            
+            // Test kernel address protection
+            valid = vmm_is_address_valid(user_dir, 0xC0000000, false, true);
+            vga_print("  Kernel space protection: ");
+            vga_print(!valid ? "PASSED\n" : "FAILED\n");
+            
+        } else {
+            vga_print("  Failed to create user directory\n");
+        }
+    }
+    else if (string_compare(command, "heapstat"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Advanced Heap Statistics:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        heap_print_stats();
+    }
+    else if (string_compare(command, "heaptest"))
+    {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_print("Running Advanced Heap Tests:\n");
+        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        heap_test_advanced();
     }
     else if (string_compare(command, "clear"))
     {

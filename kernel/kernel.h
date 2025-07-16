@@ -29,6 +29,23 @@ void pmm_print_stats(void);
 uint32_t pmm_get_free_memory(void);
 int pmm_test_allocation(void);
 
+// Virtual Memory Manager
+void vmm_init(void);
+void vmm_print_stats(void);
+void vmm_test_paging(void);
+void* vmm_alloc_pages(uint32_t count);
+void vmm_free_pages(void *virtual_addr, uint32_t count);
+
+// Advanced Heap Manager
+void advanced_heap_init(void);
+void* advanced_kmalloc(size_t size);
+void advanced_kfree(void *ptr);
+void* advanced_krealloc(void *ptr, size_t new_size);
+void* kmalloc_aligned(size_t size, size_t alignment);
+void* kcalloc(size_t num, size_t size);
+void heap_print_stats(void);
+void heap_test_advanced(void);
+
 // Interrupt Handling
 void idt_init(void);
 void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags);
