@@ -1,84 +1,39 @@
-# SimpleOS Development Roadmap
+# Expansion Roadmap: From Kernel to Full OS
 
-This document outlines the development progress and future plans for SimpleOS.
+This document outlines the path from our basic kernel to a complete operating system that could compete with Linux distributions.
 
-## Current State (v1.3.0 - July 2025)
+## Current State (Phase 0)
 
 ✅ **What We Have:**
-- **Bootloader**: Complete 16-bit to 32-bit transition with GDT setup
-- **Enhanced VGA Driver**: Text mode with colors, scrolling, and cursor management
-- **Advanced Keyboard Driver**: Full ASCII support, key repeat, modifier keys (Shift, Caps, Ctrl, Alt)
-- **Process Management**: Complete PCB implementation with process creation and lifecycle
-- **Context Switching**: Assembly-optimized CPU state saving/restoring
-- **Preemptive Scheduler**: Round-robin scheduling with timer-based task switching
-- **Advanced Memory Management**: Complete memory subsystem with PMM, VMM, protection, and advanced heap
-- **Timer Driver**: PIT-based system timer for scheduler interrupts
-- **Interactive Shell**: Command-line interface with multiple built-in commands
-- **Interrupt Handling**: IDT setup and keyboard/timer interrupt handlers
+- Bootloader with 16-bit to 32-bit transition
+- Basic VGA text mode driver
+- Keyboard input handling
+- Interrupt descriptor table (IDT)
+- Simple memory allocation
+- Basic kernel structure
 
-✅ **Shell Commands Available:**
-- `help`, `about`, `clear`, `version` - System information
-- `keytest` - Interactive keyboard testing
-- `meminfo` - Memory usage statistics
-- `memstat` - Physical memory statistics (PMM)
-- `memtest` - Physical memory allocation tests
-- `vmstat` - Virtual memory statistics (VMM)
-- `vmtest` - Virtual memory allocation tests
-- `prottest` - Memory protection tests
-- `heapstat` - Advanced heap statistics
-- `heaptest` - Advanced heap allocation tests
-- `ps` - Process listing
-- `create <name>` - Dynamic process creation
-- `kill <pid>` - Process termination
-- `syscall` - System call interface information
-- `sysctest` - Test system call dispatcher (safe mode)
-- `errno` - Error handling validation
+## Phase 1: Core Kernel (3-6 months)
 
-## Current Development Branch: v1.3.1-system-calls
+### 1.1 Memory Management
+- [ ] **Paging System**: Virtual memory with page tables
+- [ ] **Physical Memory Manager**: Frame allocation/deallocation
+- [ ] **Heap Allocator**: Proper malloc/free with free lists
+- [ ] **Memory Protection**: User/kernel space separation
 
-🎯 **Memory Management Sprint Complete!** ✅
-- [x] **Paging System**: Virtual memory with page tables ✅
-- [x] **Physical Memory Manager**: Frame allocation/deallocation ✅
-- [x] **Memory Protection**: User/kernel space separation ✅
-- [x] **Advanced Heap**: Free list optimization and fragmentation handling ✅
+### 1.2 Process Management
+- [x] **Process Control Blocks**: Store process state
+- [ ] **Context Switching**: Save/restore CPU registers and stack
+- [ ] **Basic Scheduler**: Round-robin or priority-based (framework exists but disabled)
+- [ ] **Process Creation**: fork() and exec() system calls
 
-🎯 **Current Sprint: System Calls Implementation (v1.3.1)**
-- [x] **Syscall Interface**: C-based syscall infrastructure complete ✅ (16 syscalls implemented)
-- [x] **Parameter Validation**: Context validation and error handling ✅
-- [x] **Syscall Dispatcher**: Table-driven dispatch system ✅
-- [x] **Error Handling**: Proper errno implementation ✅
-- [ ] **INT 0x80 Handler**: Assembly interrupt handler (debugging in progress)
-- [ ] **System Calls**: fork() and exec() implementation
-- [ ] **Process Synchronization**: Mutexes and semaphores
-- [ ] **Error Handling**: Proper errno implementation ✅ (Basic implementation complete)
-
-## Phase 1: Enhanced Kernel Foundation (Current Focus)
-
-### 1.1 Memory Management Improvements
-- [x] **Basic Heap Allocator**: kmalloc/kfree implementation ✅
-- [x] **Paging System**: Virtual memory with page tables ✅
-- [x] **Physical Memory Manager**: Frame allocation/deallocation ✅
-- [x] **Memory Protection**: User/kernel space separation ✅
-- [x] **Advanced Heap**: Free list optimization and fragmentation handling ✅
-
-### 1.2 Process Management Enhancements
-- [x] **Process Control Blocks**: Complete process state management ✅
-- [x] **Context Switching**: Assembly-optimized CPU state save/restore ✅
-- [x] **Preemptive Scheduler**: Round-robin with timer interrupts ✅
-- [x] **Process Creation**: Dynamic process spawning ✅
-- [ ] **System Calls**: fork() and exec() implementation
-- [ ] **Process Synchronization**: Mutexes and semaphores
-
-### 1.3 File System Foundation
+### 1.3 File System
 - [ ] **Virtual File System**: Abstraction layer
-- [ ] **Simple FS**: Custom file system or FAT32 support
-- [ ] **Directory Operations**: mkdir, rmdir, ls commands
+- [ ] **Simple FS**: Custom file system or FAT32
+- [ ] **Directory Operations**: mkdir, rmdir, ls
 - [ ] **File Operations**: create, read, write, delete
 
-### 1.4 Device Driver Expansion
-- [x] **Enhanced Timer**: PIT-based system clock ✅
-- [x] **Advanced Keyboard**: Full ASCII with modifiers ✅
-- [x] **Enhanced VGA**: Scrolling and color support ✅
+### 1.4 Device Drivers
+- [ ] **Timer Driver**: System clock and scheduling
 - [ ] **IDE/SATA Driver**: Hard disk access
 - [ ] **Serial Driver**: Debug output and communication
 - [ ] **Mouse Driver**: PS/2 mouse support

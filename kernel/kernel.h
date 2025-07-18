@@ -10,7 +10,6 @@ void vga_init(void);
 void vga_clear(void);
 void vga_print(const char *str);
 void vga_print_hex(uint32_t value);
-void vga_print_decimal(uint32_t value);
 void vga_putchar(char c);
 void vga_set_color(uint8_t foreground, uint8_t background);
 
@@ -18,33 +17,6 @@ void vga_set_color(uint8_t foreground, uint8_t background);
 void memory_init(void);
 void *kmalloc(size_t size);
 void kfree(void *ptr);
-
-// Physical Memory Manager
-void pmm_init(void);
-uint32_t pmm_alloc_frame(void);
-void pmm_free_frame(uint32_t frame_addr);
-uint32_t pmm_alloc_frames(uint32_t count);
-void pmm_free_frames(uint32_t start_addr, uint32_t count);
-void pmm_print_stats(void);
-uint32_t pmm_get_free_memory(void);
-int pmm_test_allocation(void);
-
-// Virtual Memory Manager
-void vmm_init(void);
-void vmm_print_stats(void);
-void vmm_test_paging(void);
-void* vmm_alloc_pages(uint32_t count);
-void vmm_free_pages(void *virtual_addr, uint32_t count);
-
-// Advanced Heap Manager
-void advanced_heap_init(void);
-void* advanced_kmalloc(size_t size);
-void advanced_kfree(void *ptr);
-void* advanced_krealloc(void *ptr, size_t new_size);
-void* kmalloc_aligned(size_t size, size_t alignment);
-void* kcalloc(size_t num, size_t size);
-void heap_print_stats(void);
-void heap_test_advanced(void);
 
 // Interrupt Handling
 void idt_init(void);
@@ -97,8 +69,5 @@ int strcmp(const char *str1, const char *str2);
 void process_init(void);
 void scheduler_init(void);
 void schedule(void);
-
-// System Calls
-void syscall_init(void);
 
 #endif // KERNEL_H

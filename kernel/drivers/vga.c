@@ -171,25 +171,3 @@ void vga_print_hex(uint32_t value)
 
     vga_print(buffer);
 }
-
-void vga_print_decimal(uint32_t value)
-{
-    if (value == 0) {
-        vga_putchar('0');
-        return;
-    }
-    
-    char buffer[12]; // Max 10 digits + sign + null terminator for 32-bit
-    int pos = 0;
-    
-    // Convert to decimal string (backwards)
-    while (value > 0) {
-        buffer[pos++] = '0' + (value % 10);
-        value /= 10;
-    }
-    
-    // Print in correct order
-    for (int i = pos - 1; i >= 0; i--) {
-        vga_putchar(buffer[i]);
-    }
-}

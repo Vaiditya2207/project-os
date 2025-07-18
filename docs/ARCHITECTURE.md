@@ -1,64 +1,46 @@
-# SimpleOS Architecture Overview
+# Architecture Overview
 
 ## System Architecture
 
-SimpleOS follows a monolithic kernel architecture where all kernel services run in kernel space with full hardware access. The current implementation includes a complete process management system with preemptive multitasking.
+SimpleOS follows a monolithic kernel architecture where all kernel services run in kernel space with full hardware access.
 
 ```
 ┌─────────────────────────────────────┐
-│        User Applications            │
-│     (Demo Processes, Shell)         │
+│           User Applications         │
 ├─────────────────────────────────────┤
 │         System Call Interface      │
-│           (Future Feature)          │
 ├─────────────────────────────────────┤
 │                                     │
 │           Kernel Space              │
 │  ┌─────────────┬─────────────────┐   │
 │  │   Process   │     Memory      │   │
 │  │ Management  │   Management    │   │
-│  │             │   (kmalloc)     │   │
 │  ├─────────────┼─────────────────┤   │
-│  │   Device    │   Interactive   │   │
-│  │   Drivers   │     Shell       │   │
-│  │(VGA,KB,TMR) │   (Commands)    │   │
+│  │   Device    │   File System   │   │
+│  │   Drivers   │                 │   │
 │  └─────────────┴─────────────────┘   │
 ├─────────────────────────────────────┤
 │          Hardware Layer             │
-│    (Timer, Keyboard, VGA, CPU)      │
 └─────────────────────────────────────┘
 ```
 
-## Process Management Architecture
+## Boot Process
 
-### Process Control Block (PCB)
-Each process is represented by a `process_t` structure containing:
-- **Process State**: Ready, Running, Blocked, Terminated
-- **CPU Context**: Complete register state (EAX, EBX, ECX, EDX, ESI, EDI, ESP, EBP, EIP, EFLAGS)
-- **Memory Layout**: Stack base, heap base, memory usage tracking
-- **Scheduling Info**: Priority, time slice, runtime statistics
-- **Process Relationships**: Parent/child relationships, process tree
+1. **BIOS/UEFI**: Power-on self-test, hardware initialization
+2. **Bootloader**: Load kernel from disk, switch to protected mode
+3. **Kernel**: Initialize subsystems, start user processes
 
-### Context Switching
-Implemented in assembly (`kernel/arch/context_switch.asm`):
-1. **Save Context**: Store all CPU registers and flags to PCB
-2. **Switch Stack**: Update ESP to new process stack
-3. **Restore Context**: Load new process state from PCB
-4. **Resume Execution**: Jump to new process instruction pointer
+### Detailed Boot Sequence
 
-### Scheduler
-Round-robin preemptive scheduler with timer-based task switching:
-- **Ready Queue**: Doubly-linked list of ready processes
-- **Time Slicing**: Each process gets equal CPU time
-- **Preemption**: Timer interrupts trigger context switches
-- **Priority Support**: High, Normal, Low priority levels
+```
+Power On → BIOS → MBR (Bootloader) → Kernel → Init → Shell
+```
 
-### Process Creation
-Dynamic process creation with memory allocation:
-1. **Allocate PCB**: kmalloc() for process control block
-2. **Setup Stack**: 4KB stack per process with guard pages
-3. **Initialize Context**: Set entry point, stack pointer, and flags
-4. **Add to Scheduler**: Insert into ready queue for execution
+1. **BIOS** loads first 512 bytes (bootloader) from disk to 0x7C00
+2. **Bootloader** switches from 16-bit real mode to 32-bit protected mode
+3. **Kernel** takes control, initializes hardware and subsystems
+4. **Init process** starts user-space environment
+5. **Shell** provides user interface
 
 ## Memory Layout
 
@@ -95,61 +77,26 @@ The kernel uses the Interrupt Descriptor Table (IDT) to handle hardware and soft
 
 ## Device Drivers
 
-### Enhanced VGA Driver (`kernel/drivers/vga.c`)
-- **Text Mode**: 80x25 character display with 16 colors
-- **Memory-Mapped I/O**: Direct access to VGA buffer at 0xB8000
-- **Scrolling Support**: Automatic screen scrolling when buffer is full
-- **Cursor Management**: Visual cursor positioning and movement
-- **Color Support**: Foreground/background color combinations
-- **Special Characters**: Newline, carriage return, tab, backspace handling
+### VGA Driver
+- Text mode 80x25 characters
+- 16 colors (4-bit color depth)
+- Memory-mapped I/O at 0xB8000
 
-### Advanced Keyboard Driver (`kernel/drivers/keyboard.c`)
-- **Full ASCII Support**: Complete character set including special symbols
-- **Modifier Keys**: Shift, Caps Lock, Ctrl, Alt key handling
-- **Key Repeat**: Progressive key repeat with acceleration
-- **Scancode Translation**: Hardware scancode to ASCII conversion
-- **Input Buffer**: 256-character input buffer with overflow protection
-- **State Management**: Persistent modifier key states
-
-### System Timer Driver (`kernel/drivers/timer.c`)
-- **PIT Configuration**: Programmable Interval Timer setup
-- **Interrupt Generation**: Regular timer interrupts for scheduler
-- **Frequency Control**: Configurable timer frequency (default 100Hz)
-- **Scheduler Integration**: Automatic preemptive task switching
+### Keyboard Driver
+- PS/2 keyboard controller
+- Scancode to ASCII translation
+- Interrupt-driven input (IRQ1)
 
 ## Memory Management
 
 ### Current Implementation
-- **Heap Allocator**: kmalloc/kfree with basic free list management
-- **Process Stacks**: 4KB per-process stacks with stack overflow protection
-- **Memory Tracking**: Usage statistics and debugging information
-- **Static Memory**: Kernel data structures in static memory areas
-
-### Memory Layout
-```
-0xFFFFFFFF ┌─────────────────┐
-           │   Kernel Space  │ (3GB-4GB)
-           │   (Future)      │
-0xC0000000 ├─────────────────┤
-           │   Process Heap  │
-           │   & Stacks      │
-0x00200000 ├─────────────────┤
-           │   Kernel Heap   │
-0x00100000 ├─────────────────┤ <- Kernel loaded here
-           │   BIOS/VGA      │
-0x000A0000 ├─────────────────┤
-           │   Free Memory   │
-0x00001000 ├─────────────────┤
-           │   Bootloader    │
-0x00007C00 ├─────────────────┤
-           │   BIOS Data     │
-0x00000000 └─────────────────┘
-```
+- **Bump Allocator**: Simple linear allocation
+- **Fixed Heap**: 1MB heap starting at 0x100000
 
 ### Future Improvements
-- **Paging**: Virtual memory management with page tables
-- **User/Kernel Separation**: Memory protection between privilege levels
-- **Advanced Allocators**: Slab allocator, buddy system
+- **Paging**: Virtual memory management
+- **Free Lists**: Proper malloc/free implementation
+- **Memory Protection**: User/kernel space separation
 
 ## Process Management
 

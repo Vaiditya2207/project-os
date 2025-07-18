@@ -1,4 +1,11 @@
 #include "process.h"
+// Demo program for exec syscall: prints hello message
+void exec_hello_program(void)
+{
+    vga_print("Hello from exec_hello_program!\n");
+    // Simulate process exit
+    process_exit(0);
+}
 
 // Demo user processes for testing process management
 
@@ -16,10 +23,11 @@ void demo_counter_process(void)
     {
         counter++;
     }
-
-    // Process completes - in a real OS this would trigger process exit
-    // For now, just return safely
-    return;
+    vga_print("Counter process finished counting to ");
+    vga_print_hex(counter);
+    vga_print("\n");
+    // new process_exit(0) - should work now correctly
+    process_exit(0);
 }
 
 /**
@@ -38,6 +46,10 @@ void demo_calc_process(void)
         }
     }
 
+    vga_print("Calculation process completed with result: ");
+    vga_print_hex(result);
+    vga_print("\n");
+
     // Process exits naturally
     process_exit(0);
 }
@@ -53,9 +65,11 @@ void demo_monitor_process(void)
         // Simulate monitoring work
         if (i % 200000 == 0)
         {
+            vga_print("Monitoring system status...\n");
             // Would check system status
         }
     }
+    vga_print("Monitor process completed its work.\n");
 
     process_exit(0);
 }

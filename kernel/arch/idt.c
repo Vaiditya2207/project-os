@@ -24,7 +24,6 @@ static struct idt_ptr idt_p;
 
 // External assembly function to load IDT
 extern void idt_flush(uint32_t);
-extern void int3_handler_asm(void);
 
 // Exception handlers
 extern void isr0(void);
@@ -57,15 +56,6 @@ void exception_handler(void)
     }
 }
 
-// Safe INT 3 handler for testing
-void int3_handler(void)
-{
-    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_print("INT 3 handler called successfully!\n");
-    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    // This will return normally via iret in the assembly wrapper
-}
-
 void idt_init(void)
 {
     idt_p.limit = (sizeof(struct idt_entry) * IDT_ENTRIES) - 1;
@@ -82,16 +72,14 @@ void idt_init(void)
     }
 
     // Set up basic exception handlers first
-    // NOTE: Using actual segment values from idtcheck: CS=0x10, DS=0x18
-    // TODO: Fix GDT setup to use standard values (CS=0x08, DS=0x10)
-    idt_set_gate(0, (uint32_t)exception_handler, 0x10, 0x8E); // Division by zero
-    idt_set_gate(1, (uint32_t)exception_handler, 0x10, 0x8E); // Debug
-    idt_set_gate(2, (uint32_t)exception_handler, 0x10, 0x8E); // NMI
-    idt_set_gate(3, (uint32_t)int3_handler_asm, 0x10, 0x8E); // Breakpoint - special handler
-    idt_set_gate(4, (uint32_t)exception_handler, 0x10, 0x8E); // Overflow
-    idt_set_gate(5, (uint32_t)exception_handler, 0x10, 0x8E); // Bound range
-    idt_set_gate(6, (uint32_t)exception_handler, 0x10, 0x8E); // Invalid opcode
-    idt_set_gate(7, (uint32_t)exception_handler, 0x10, 0x8E); // Device not available
+    idt_set_gate(0, (uint32_t)exception_handler, 0x08, 0x8E); // Division by zero
+    idt_set_gate(1, (uint32_t)exception_handler, 0x08, 0x8E); // Debug
+    idt_set_gate(2, (uint32_t)exception_handler, 0x08, 0x8E); // NMI
+    idt_set_gate(3, (uint32_t)exception_handler, 0x08, 0x8E); // Breakpoint
+    idt_set_gate(4, (uint32_t)exception_handler, 0x08, 0x8E); // Overflow
+    idt_set_gate(5, (uint32_t)exception_handler, 0x08, 0x8E); // Bound range
+    idt_set_gate(6, (uint32_t)exception_handler, 0x08, 0x8E); // Invalid opcode
+    idt_set_gate(7, (uint32_t)exception_handler, 0x08, 0x8E); // Device not available
 
     // Load IDT
     idt_flush((uint32_t)&idt_p);

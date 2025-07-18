@@ -7,8 +7,6 @@
 #include "drivers/timer.h"
 #include "proc/process.h"
 #include "syscalls.h"
-#include "mem/vmm.h"
-#include "mem/advanced_heap.h"
 
 // Simple serial output for debugging
 void serial_write_char(char c)
@@ -27,6 +25,24 @@ void serial_write_string(const char *str)
     }
 }
 
+// Converts a string to uint32_t, returns 1 on success, 0 on failure
+int string_to_uint32(const char *str, uint32_t *out)
+{
+    uint32_t result = 0;
+    int i = 0;
+    if (!str || !out)
+        return 0;
+    while (str[i])
+    {
+        if (str[i] < '0' || str[i] > '9')
+            return 0;
+        result = result * 10 + (str[i] - '0');
+        i++;
+    }
+    *out = result;
+    return (i > 0);
+}
+
 // Forward declarations
 void show_welcome_screen(void);
 void interactive_shell(void);
@@ -37,6 +53,30 @@ int string_starts_with(const char *str, const char *prefix);
 void string_copy(char *dest, const char *src);
 int string_length(const char *str);
 int parse_arguments(const char *command, char *cmd, char *arg1, char *arg2);
+// Change the current process to the given PID, set state to RUNNING, and print debug info
+void change_current_process(uint32_t pid)
+{
+    if (pid == 1)
+    {
+        vga_print("ERROR: Cannot switch to kernel process (PID 1)\n");
+        return;
+    }
+    process_t *proc = process_find_by_pid(pid);
+    if (!proc)
+    {
+        vga_print("ERROR: Process not found for PID: ");
+        vga_print_hex(pid);
+        vga_print("\n");
+        return;
+    }
+    current_process = proc;
+    current_process->state = PROCESS_RUNNING;
+    vga_print("Switched to process PID: ");
+    vga_print_hex(pid);
+    vga_print(" (Name: ");
+    vga_print(current_process->name);
+    vga_print(")\n");
+}
 process_t *process_create_test(const char *name, void *entry_point, process_priority_t priority);
 
 // Kernel main function
@@ -53,20 +93,8 @@ void kernel_main(void)
     vga_print("Initializing memory...\n");
     memory_init();
 
-    vga_print("Initializing physical memory manager...\n");
-    pmm_init();
-
-    vga_print("Initializing virtual memory manager...\n");
-    vmm_init();
-
-    vga_print("Initializing advanced heap manager...\n");
-    advanced_heap_init();
-
     vga_print("Initializing IDT...\n");
     idt_init();
-
-    vga_print("Initializing system calls...\n");
-    syscall_init();
 
     vga_print("Initializing timer...\n");
     timer_init(); // Initialize timer for preemptive scheduling
@@ -163,13 +191,6 @@ void process_command(char *command)
         vga_print("  about    - About SimpleOS\n");
         vga_print("  status   - System status\n");
         vga_print("  memory   - Memory information\n");
-        vga_print("  memstat  - Physical memory statistics\n");
-        vga_print("  memtest  - Test physical memory allocation\n");
-        vga_print("  vmstat   - Virtual memory statistics\n");
-        vga_print("  vmtest   - Test virtual memory allocation\n");
-        vga_print("  prottest - Test memory protection features\n");
-        vga_print("  heapstat - Advanced heap statistics\n");
-        vga_print("  heaptest - Test advanced heap features\n");
         vga_print("  clear    - Clear screen\n");
         vga_print("  version  - Show version info\n");
         vga_print("  keytest  - Test enhanced keyboard features\n");
@@ -184,15 +205,6 @@ void process_command(char *command)
         vga_print("  getpid          - Get current process ID\n");
         vga_print("  schedule        - Trigger manual scheduler\n");
         vga_print("  sysinfo         - Show system protection info\n");
-        vga_print("  syscall         - Show system call interface info\n");
-        vga_print("  sysctest        - Test system call dispatcher (SAFE MODE - stable)\n");
-        vga_print("  int80test       - Test INT 0x80 interrupt handler (experimental)\n");
-        vga_print("  int80min        - Test minimal INT 0x80 handler (just iret)\n");
-        vga_print("  int80debug      - Test debug INT 0x80 handler (basic registers)\n");
-        vga_print("  int80full       - Test full INT 0x80 handler (complete save)\n");
-        vga_print("  inttest         - Test basic interrupt mechanism (INT 3)\n");
-        vga_print("  idtcheck        - Check IDT setup without calling interrupts\n");
-        vga_print("  errno           - Show errno value and test error handling\n");
     }
     else if (string_compare(command, "about"))
     {
@@ -257,89 +269,6 @@ void process_command(char *command)
             vga_putchar('0' + (total_kb % 10));
         }
         vga_print("KB\n");
-    }
-    else if (string_compare(command, "memstat"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Physical Memory Statistics:\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        pmm_print_stats();
-    }
-    else if (string_compare(command, "memtest"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Running Physical Memory Tests:\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        pmm_test_allocation();
-    }
-    else if (string_compare(command, "vmstat"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Virtual Memory Statistics:\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        vmm_print_stats();
-    }
-    else if (string_compare(command, "vmtest"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Running Virtual Memory Tests:\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        vmm_test_paging();
-    }
-    else if (string_compare(command, "prottest"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Testing Memory Protection:\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        // Test user directory creation
-        void *user_dir = vmm_create_user_directory();
-        if (user_dir) {
-            vga_print("  User page directory created: 0x");
-            vga_print_hex((uint32_t)user_dir);
-            vga_print("\n");
-            
-            // Test user stack setup
-            if (vmm_setup_user_stack(user_dir, 0xBFFFF000, 0x1000)) {
-                vga_print("  User stack setup: PASSED\n");
-            } else {
-                vga_print("  User stack setup: FAILED\n");
-            }
-            
-            // Test user heap setup
-            if (vmm_setup_user_heap(user_dir, 0x10000000, 0x1000)) {
-                vga_print("  User heap setup: PASSED\n");
-            } else {
-                vga_print("  User heap setup: FAILED\n");
-            }
-            
-            // Test address validation
-            bool valid = vmm_is_address_valid(user_dir, 0xBFFFE000, true, true);
-            vga_print("  User stack access validation: ");
-            vga_print(valid ? "PASSED\n" : "FAILED\n");
-            
-            // Test kernel address protection
-            valid = vmm_is_address_valid(user_dir, 0xC0000000, false, true);
-            vga_print("  Kernel space protection: ");
-            vga_print(!valid ? "PASSED\n" : "FAILED\n");
-            
-        } else {
-            vga_print("  Failed to create user directory\n");
-        }
-    }
-    else if (string_compare(command, "heapstat"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Advanced Heap Statistics:\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        heap_print_stats();
-    }
-    else if (string_compare(command, "heaptest"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Running Advanced Heap Tests:\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        heap_test_advanced();
     }
     else if (string_compare(command, "clear"))
     {
@@ -719,396 +648,28 @@ void process_command(char *command)
         vga_print("    - Context switching with timer interrupts\n");
         vga_print("    - Preemptive scheduling at 100Hz\n");
     }
-    else if (string_compare(command, "syscall"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("System Call Interface Information:\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        vga_print("  Interface: INT 0x80 (Linux-compatible)\n");
-        vga_print("  Parameter passing: EAX=syscall, EBX-EBP=args\n");
-        vga_print("  Error handling: errno and return codes\n");
-        vga_print("  Security: Parameter validation and bounds checking\n");
-        vga_print("\n");
-        vga_print("  Implemented system calls:\n");
-        vga_print("    0: exit    - Terminate process\n");
-        vga_print("    1: fork    - Create process copy\n");
-        vga_print("    2: exec    - Replace process image\n");
-        vga_print("    3: wait    - Wait for child process\n");
-        vga_print("    4: getpid  - Get process ID\n");
-        vga_print("    5: kill    - Send signal to process\n");
-        vga_print("    6: read    - Read from file descriptor\n");
-        vga_print("    7: write   - Write to file descriptor\n");
-        vga_print("    10: yield  - Yield CPU to other processes\n");
-        vga_print("    11: sleep  - Sleep for specified time\n");
-        vga_print("    15: malloc - Allocate memory\n");
-        vga_print("\n");
-        vga_print("  Use 'sysctest' to test system call interface\n");
-    }
-    else if (string_compare(command, "sysctest"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-        vga_print("Testing System Call Interface (SAFE MODE - STABLE)...\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        // Test 1: Direct C function calls first (bypass assembly)
-        vga_print("\n1. Testing direct syscall functions...\n");
-        
-        // Test getpid via direct call
-        uint32_t pid = sys_getpid();
-        vga_print("   Direct getpid: ");
-        vga_print_hex(pid);
-        vga_print("\n");
-        
-        // Test syscall dispatcher directly
-        vga_print("\n2. Testing syscall dispatcher...\n");
-        struct syscall_context test_ctx;
-        test_ctx.eax = SYS_GETPID;
-        test_ctx.ebx = 0;
-        test_ctx.ecx = 0;
-        test_ctx.edx = 0;
-        test_ctx.esi = 0;
-        test_ctx.edi = 0;
-        test_ctx.ebp = 0;
-        
-        int32_t result = syscall_dispatch_c(&test_ctx);
-        vga_print("   Dispatcher getpid result: ");
-        vga_print_hex(result);
-        vga_print("\n");
-        
-        // Test simple inline assembly (INT 0x80 DEBUGGING)
-        vga_print("\n3. Testing INT 0x80 interface (DEBUGGING MODE)...\n");
-        
-        vga_print("   ✅ INT 0x80 handler temporarily disabled due to crashes\n");
-        vga_print("   ❌ Issue: Handler causes immediate kernel crash\n");
-        vga_print("   ✅ Status: C syscall infrastructure works perfectly\n");
-        vga_print("   🔧 Next: Debug IDT/interrupt setup for INT 0x80\n");
-        
-        // Test that our syscall infrastructure works via C calls
-        vga_print("\n4. Demonstrating working syscall infrastructure...\n");
-        
-        // Show that all our syscalls work via C interface
-        vga_print("   Testing multiple syscalls via C interface:\n");
-        
-        // Test getpid multiple times
-        for (int i = 0; i < 3; i++) {
-            uint32_t pid = sys_getpid();
-            vga_print("     getpid() call ");
-            vga_print_decimal(i + 1);
-            vga_print(": ");
-            vga_print_hex(pid);
-            vga_print("\n");
+    // Command to change process if pch <i>
+    else if (command[0] == 'p' && command[1] == 'c' && command[2] == 'h' && command[3] == ' ' ){
+        if (command[4] == 1)
+        {
+            vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+            vga_print("ERROR: Cannot switch to kernel process (PID 1)\n");
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+            return;
         }
-        
-        // Test write syscall
-        struct syscall_context write_ctx;
-        write_ctx.eax = SYS_WRITE;
-        write_ctx.ebx = 1; // stdout
-        write_ctx.ecx = (uint32_t)"SYSCALL DEMO\n";
-        write_ctx.edx = 13;
-        
-        int32_t write_result = sys_write(&write_ctx);
-        vga_print("     write() returned: ");
-        vga_print_decimal(write_result);
-        vga_print(" bytes\n");
-        
-        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-        vga_print("\n✅ SAFE MODE syscall test completed! All C-level syscalls working!\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    }
-    else if (string_compare(command, "int80test"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
-        vga_print("Systematic INT 0x80 Handler Debugging...\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        vga_print("🔧 Testing handler levels systematically:\n\n");
-        
-        // Level 1: Minimal handler (just iret)
-        vga_print("Level 1: Testing minimal handler (just iret)...\n");
-        extern void syscall_interrupt_handler_minimal(void);
-        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_minimal, 0x10, 0x8E);
-        
-        uint32_t test_result = 0x12345678; // Set a test value
-        asm volatile (
-            "mov $4, %%eax\n\t"      // SYS_GETPID  
-            "int $0x80\n\t"          // Should return original EAX
-            : "=a" (test_result)     
-            :                        
-            : "memory"
-        );
-        
-        vga_print("   Minimal handler result: ");
-        vga_print_hex(test_result);
-        if (test_result == 4) {
-            vga_print(" ✅ SUCCESS - Handler called and returned!\n");
-            
-            // Level 2: Debug handler (push/pop EAX)
-            vga_print("\nLevel 2: Testing debug handler (basic register handling)...\n");
-            extern void syscall_interrupt_handler_debug(void);
-            idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_debug, 0x10, 0x8E);
-            
-            asm volatile (
-                "mov $4, %%eax\n\t"      // SYS_GETPID  
-                "int $0x80\n\t"          // Should return PID 1
-                : "=a" (test_result)     
-                :                        
-                : "memory"
-            );
-            
-            vga_print("   Debug handler result: ");
-            vga_print_hex(test_result);
-            if (test_result == 1) {
-                vga_print(" ✅ SUCCESS - Register modification works!\n");
-                
-                // Level 3: Full handler (pushad/popad)
-                vga_print("\nLevel 3: Testing full handler (complete register save)...\n");
-                extern void syscall_interrupt_handler_simple(void);
-                idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_simple, 0x10, 0x8E);
-                
-                asm volatile (
-                    "mov $4, %%eax\n\t"      // SYS_GETPID  
-                    "int $0x80\n\t"          // Should return original EAX
-                    : "=a" (test_result)     
-                    :                        
-                    : "memory"
-                );
-                
-                vga_print("   Full handler result: ");
-                vga_print_hex(test_result);
-                if (test_result == 4) {
-                    vga_print(" ✅ SUCCESS - Full register handling works!\n");
-                    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-                    vga_print("\n🎉 ALL HANDLER LEVELS WORKING! INT 0x80 is functional!\n");
-                    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-                } else {
-                    vga_print(" ❌ FAILED - Full handler issue\n");
-                }
-            } else {
-                vga_print(" ❌ FAILED - Debug handler issue\n");
-            }
-        } else {
-            vga_print(" ❌ FAILED - Minimal handler crashed or malfunctioned\n");
+        // checking if it is a number
+        uint32_t pid = 0;
+        char *pidstr = command + 4; // Skip "pch "
+        if (string_to_uint32(pidstr, &pid))
+        {
+            change_current_process(pid);
         }
-        
-        // Clean up
-        idt_set_gate(0x80, 0, 0, 0);  // Clear the handler
-        vga_print("\n🔒 INT 0x80 handler disabled for stability\n");
-    }
-    else if (string_compare(command, "errno"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Current errno value: ");
-        vga_print_decimal(syscall_get_errno());
-        vga_print("\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        vga_print("Testing error conditions...\n");
-        
-        // Test invalid syscall number via direct dispatcher
-        struct syscall_context err_ctx;
-        err_ctx.eax = 999;  // Invalid syscall
-        err_ctx.ebx = 0;
-        err_ctx.ecx = 0;
-        err_ctx.edx = 0;
-        err_ctx.esi = 0;
-        err_ctx.edi = 0;
-        err_ctx.ebp = 0;
-        
-        int32_t result = syscall_dispatch_c(&err_ctx);
-        vga_print("Invalid syscall result: ");
-        vga_print_hex(result);
-        vga_print(", errno: ");
-        vga_print_decimal(syscall_get_errno());
-        vga_print("\n");
-    }
-    else if (string_compare(command, "inttest"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-        vga_print("Testing Basic Interrupt Mechanism\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        // Check current interrupt state
-        uint32_t eflags;
-        asm volatile ("pushf; pop %0" : "=r" (eflags));
-        vga_print("EFLAGS: ");
-        vga_print_hex(eflags);
-        if (eflags & 0x200) {
-            vga_print(" (IF=1 - interrupts enabled)\n");
-            vga_print("This is dangerous! Disabling interrupts...\n");
-            asm volatile ("cli");
-        } else {
-            vga_print(" (IF=0 - interrupts disabled)\n");
+        else
+        {
+            vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+            vga_print("ERROR: Invalid PID\n");
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         }
-        
-        vga_print("Attempting INT 3 (breakpoint)...\n");
-        
-        // Try a simple software interrupt
-        asm volatile (
-            "int $3\n\t"
-            :
-            :
-            : "memory"
-        );
-        
-        vga_print("INT 3 completed without crash!\n");
-    }
-    else if (string_compare(command, "idtcheck"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);
-        vga_print("Checking IDT Setup (no interrupts called)\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        // Check EFLAGS
-        uint32_t eflags;
-        asm volatile ("pushf; pop %0" : "=r" (eflags));
-        vga_print("EFLAGS: ");
-        vga_print_hex(eflags);
-        vga_print(eflags & 0x200 ? " (IF=1)\n" : " (IF=0)\n");
-        
-        // Get IDT register
-        struct {
-            uint16_t limit;
-            uint32_t base;
-        } __attribute__((packed)) idt_reg;
-        
-        asm volatile ("sidt %0" : "=m" (idt_reg));
-        vga_print("IDT Base: ");
-        vga_print_hex(idt_reg.base);
-        vga_print(", Limit: ");
-        vga_print_hex(idt_reg.limit);
-        vga_print("\n");
-        
-        // Check if IDT base looks reasonable
-        if (idt_reg.base >= 0x100000 && idt_reg.base < 0x200000) {
-            vga_print("IDT base address looks reasonable\n");
-        } else {
-            vga_print("WARNING: IDT base address looks suspicious!\n");
-        }
-        
-        // Check CS register
-        uint16_t cs;
-        asm volatile ("mov %%cs, %0" : "=r" (cs));
-        vga_print("Code Segment (CS): ");
-        vga_print_hex(cs);
-        if (cs == 0x08) {
-            vga_print(" (correct kernel code segment)\n");
-        } else {
-            vga_print(" (unexpected value!)\n");
-        }
-        
-        // Check DS register  
-        uint16_t ds;
-        asm volatile ("mov %%ds, %0" : "=r" (ds));
-        vga_print("Data Segment (DS): ");
-        vga_print_hex(ds);
-        if (ds == 0x10) {
-            vga_print(" (correct kernel data segment)\n");
-        } else {
-            vga_print(" (unexpected value!)\n");
-        }
-        
-        vga_print("IDT check completed - no interrupts called\n");
-    }
-    else if (string_compare(command, "int80min"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
-        vga_print("Testing INT 0x80 - MINIMAL Handler (just iret)\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        // First, check if interrupts are enabled
-        uint32_t eflags;
-        asm volatile ("pushf; pop %0" : "=r" (eflags));
-        vga_print("Current EFLAGS: ");
-        vga_print_hex(eflags);
-        if (eflags & 0x200) {
-            vga_print(" (interrupts ENABLED - dangerous!)\n");
-            vga_print("Disabling interrupts for safety...\n");
-            asm volatile ("cli");
-        } else {
-            vga_print(" (interrupts disabled - good!)\n");
-        }
-        
-        extern void syscall_interrupt_handler_minimal(void);
-        vga_print("Installing minimal handler at address: ");
-        vga_print_hex((uint32_t)syscall_interrupt_handler_minimal);
-        vga_print("\n");
-        
-        // Use the correct code segment (0x10 instead of 0x08)
-        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_minimal, 0x10, 0x8E);
-        vga_print("Handler installed. Attempting INT 0x80...\n");
-        
-        uint32_t test_result = 0x12345678;
-        asm volatile (
-            "mov $4, %%eax\n\t"      // SYS_GETPID  
-            "int $0x80\n\t"          
-            : "=a" (test_result)     
-            :                        
-            : "memory"
-        );
-        
-        vga_print("RETURNED! Result: ");
-        vga_print_hex(test_result);
-        vga_print(" (should be 4 if working)\n");
-        
-        // Clean up
-        idt_set_gate(0x80, 0, 0, 0);
-        vga_print("Handler cleared.\n");
-    }
-    else if (string_compare(command, "int80debug"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK);
-        vga_print("Testing INT 0x80 - DEBUG Handler (basic register handling)\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        extern void syscall_interrupt_handler_debug(void);
-        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_debug, 0x10, 0x8E);
-        
-        vga_print("Handler installed. Calling INT 0x80...\n");
-        
-        uint32_t test_result = 0x12345678;
-        asm volatile (
-            "mov $4, %%eax\n\t"      // SYS_GETPID  
-            "int $0x80\n\t"          
-            : "=a" (test_result)     
-            :                        
-            : "memory"
-        );
-        
-        vga_print("Result: ");
-        vga_print_hex(test_result);
-        vga_print(" (should be 1 if working)\n");
-        
-        // Clean up
-        idt_set_gate(0x80, 0, 0, 0);
-        vga_print("Handler cleared.\n");
-    }
-    else if (string_compare(command, "int80full"))
-    {
-        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-        vga_print("Testing INT 0x80 - FULL Handler (complete register save)\n");
-        vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        
-        extern void syscall_interrupt_handler_simple(void);
-        idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler_simple, 0x10, 0x8E);
-        
-        vga_print("Handler installed. Calling INT 0x80...\n");
-        
-        uint32_t test_result = 0x12345678;
-        asm volatile (
-            "mov $4, %%eax\n\t"      // SYS_GETPID  
-            "int $0x80\n\t"          
-            : "=a" (test_result)     
-            :                        
-            : "memory"
-        );
-        
-        vga_print("Result: ");
-        vga_print_hex(test_result);
-        vga_print(" (expected behavior varies by handler)\n");
-        
-        // Clean up
-        idt_set_gate(0x80, 0, 0, 0);
-        vga_print("Handler cleared.\n");
     }
     else
     {
